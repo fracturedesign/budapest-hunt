@@ -394,8 +394,10 @@ eq("fresh state has no hints",  L.countHints(L.freshState()), 0);
 section("5. content.js validation");
 
 ok("config exists", !!HUNT.config);
-ok("has 8–10 stops (" + HUNT.stops.length + ")",
-   HUNT.stops.length >= 8 && HUNT.stops.length <= 10);
+// Not a fixed range — the whole point of the editor is that you reshape this
+// hunt however you like, including down to a couple of stops. Just needs at
+// least one, or there's no game.
+ok("has at least 1 stop (" + HUNT.stops.length + ")", HUNT.stops.length >= 1);
 
 const ids = new Set();
 HUNT.stops.forEach((stop, i) => {
@@ -411,7 +413,9 @@ HUNT.stops.forEach((stop, i) => {
   ok(at + " has a success message", !!stop.successMessage);
 
   if (L.typeNeedsAnswer(L.stopType(stop))) {
-    ok(at + " has 1–2 hints", Array.isArray(stop.hints) && stop.hints.length >= 1 && stop.hints.length <= 2);
+    // No upper bound — the editor doesn't cap hint count either, and 1-2 was
+    // always a style suggestion for THIS demo content, not a real limit.
+    ok(at + " has at least 1 hint", Array.isArray(stop.hints) && stop.hints.length >= 1);
     ok(at + " has a non-empty answers array",
        Array.isArray(stop.answers) && stop.answers.length > 0);
   }
@@ -427,8 +431,11 @@ HUNT.stops.forEach((stop, i) => {
 
   // Every real (non-placeholder) answer must actually match itself once
   // normalised — catches answers that are pure punctuation or whitespace.
-  if (!L.isPlaceholderStop(stop)) {
-    stop.answers.forEach(a => {
+  // Only applies to types that have an `answers` array at all — dare/info
+  // stops are never placeholders (isPlaceholderStop short-circuits false for
+  // them) but also legitimately have no answers to check.
+  if (L.typeNeedsAnswer(L.stopType(stop)) && !L.isPlaceholderStop(stop)) {
+    (stop.answers || []).forEach(a => {
       ok(at + ' answer "' + a + '" survives normalisation', L.normalize(a).length > 0);
       ok(at + ' answer "' + a + '" matches itself', L.checkAnswer(stop, a).ok);
     });
@@ -476,11 +483,6 @@ const run = L.freshState();
 run.startedAt = 0;
 let clock = 0;
 
-const scripted = {                       // deliberately wrong answers first
-  deak:         ["73", "72"],
-  vorousmarty:  [],
-};
-
 let solvedCount = 0;
 HUNT.stops.forEach((stop, i) => {
   run.stopIndex = i;
@@ -497,7 +499,11 @@ HUNT.stops.forEach((stop, i) => {
     run.hintsUsed[stop.id] = [0];
   }
 
-  const answer = L.isPlaceholderStop(stop) ? "whatever" : stop.answers[0];
+  // dare/info stops don't need an answer — checkAnswer() accepts anything
+  // for them, same as the real "confirm done" button does.
+  const answer = !L.typeNeedsAnswer(L.stopType(stop)) ? "done"
+               : L.isPlaceholderStop(stop) ? "whatever"
+               : (stop.answers || [])[0];
   const res = L.checkAnswer(stop, answer);
   ok("stop " + (i + 1) + " (" + stop.id + ") is solvable with its own first answer", res.ok);
   if (res.ok) { run.solved.push(stop.id); solvedCount++; }
@@ -529,10 +535,11 @@ function skipVisible(stop, st, cfg) {
 const gs = L.freshState();
 const gstop = HUNT.stops[0];
 const gcfg = HUNT.config;
+const allHintIndexes = (gstop.hints || []).map((_, i) => i);   // however many this stop actually has
 ok("hidden at the start",             !skipVisible(gstop, gs, gcfg));
 gs.wrong[gstop.id] = 9;
 ok("hidden with wrongs but no hints", !skipVisible(gstop, gs, gcfg));
-gs.hintsUsed[gstop.id] = [0, 1];
+gs.hintsUsed[gstop.id] = allHintIndexes;
 ok("visible with all hints + wrongs",  skipVisible(gstop, gs, gcfg));
 gs.wrong[gstop.id] = 1;
 ok("hidden again if wrongs too few",  !skipVisible(gstop, gs, gcfg));
