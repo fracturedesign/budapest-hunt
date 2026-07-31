@@ -405,6 +405,7 @@
     emptyAnswer:      "Type something first.",
     placeholderBadge: "⚠️ Placeholder stop — the real answer hasn't been written yet, so anything you type will be accepted.",
     taskTimerTarget:  "🎯 target {target}",
+    taskPoints:       "🏆 {points}/{possible}",
     photoCaptureLabel: "📸 Photo proof",
     takePhotoButton:   "📸 Take a photo",
     retakePhotoButton: "↺ Retake",
@@ -787,6 +788,7 @@
   function tick() {
     paintTimer();
     paintTaskTimer();
+    paintTaskPoints();
   }
 
   function startTimerLoop() {
@@ -936,9 +938,12 @@
 
     // Start (once) this stop's own clock. Re-entering the puzzle screen —
     // e.g. after tapping back to re-read the travel clue — must NOT reset it.
-    // Runs whenever the timer WOULD show, not just for scored stops — a
-    // display-only clock on an unscored stop still needs a start time.
-    if (shouldShowTimer(stop) && state.puzzleStartedAt[stop.id] == null) {
+    // Runs whenever the timer WOULD show OR the stop is scored — timer
+    // visibility and scoring are independent settings, and a scored stop
+    // needs a start time to compute real points from even if its clock is
+    // hidden. Skipping this for an unscored, timer-off stop just avoids
+    // storing a start time nobody will ever read.
+    if ((shouldShowTimer(stop) || isScoredStop(stop)) && state.puzzleStartedAt[stop.id] == null) {
       state.puzzleStartedAt[stop.id] = Date.now();
       save();
     }
@@ -952,6 +957,7 @@
     paintHints();
     paintSkip();
     paintTaskTimer();
+    paintTaskPoints();
     paintHud();
   }
 
@@ -1032,6 +1038,38 @@
       elapsedSec > scoring.targetSeconds + scoring.decayWindowSeconds);
   }
 
+  /**
+   * Live "if you solved it right now" points preview. Shown whenever the
+   * stop is scored — independent of whether its visual clock is on — so
+   * hint and time penalties are visible as they land instead of being a
+   * surprise on the solved screen.
+   */
+  function paintTaskPoints() {
+    var box = $("taskPoints");
+    if (!box) return;
+    var stop = currentStop();
+
+    if (state.view !== "puzzle" || isFinished() || !isScoredStop(stop)) {
+      box.hidden = true;
+      return;
+    }
+    var startedAt = state.puzzleStartedAt[stop.id];
+    if (startedAt == null) { box.hidden = true; return; }
+
+    var scoring = resolveScoring(C, stop);
+    var elapsedSec = (Date.now() - startedAt) / 1000;
+    var hintCount = (state.hintsUsed[stop.id] || []).length;
+    var points = computeStopPoints(stop, C, elapsedSec, hintCount, false);
+
+    box.hidden = false;
+    box.textContent = t("taskPoints", { points: points, possible: scoring.basePoints });
+    // Same thresholds paintTaskTimer uses, so the two chips never disagree.
+    box.classList.toggle("task-points-warn",
+      elapsedSec > scoring.targetSeconds && elapsedSec <= scoring.targetSeconds + scoring.decayWindowSeconds);
+    box.classList.toggle("task-points-bad",
+      elapsedSec > scoring.targetSeconds + scoring.decayWindowSeconds);
+  }
+
   /** Show whichever answer control this stop's type calls for, hide the rest. */
   function paintAnswerUI(stop, type) {
     $("answerForm").hidden = true;
@@ -1109,6 +1147,7 @@
           save();
           paintHints();
           paintSkip();
+          paintTaskPoints();   // the penalty should land the instant it's incurred
         });
         zone.appendChild(btn);
       }

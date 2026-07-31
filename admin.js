@@ -1053,7 +1053,8 @@
       ["hintButtonFreeScored", "Reveal a hint (hints free, but scored)"],
       ["hintTag",        "Label above a revealed hint"],
       ["skipButton",     "Give up on a stop"],
-      ["taskTimerTarget", "Target-time readout next to the per-stop clock"]
+      ["taskTimerTarget", "Target-time readout next to the per-stop clock"],
+      ["taskPoints",      "Live points preview ({points}, {possible})"]
     ]},
     { title: "Answer area", note: "", keys: [
       ["answerLabel",       "Label above the answer box"],

@@ -173,9 +173,12 @@ Roadkill Stag) — add, remove, rename or re-threshold them freely, just keep
 one row at 0% so nobody falls through with no title at all.
 
 On the puzzle screen, a live ⏱ clock shows next to each scored stop (turning
-amber past target, red past the decay window), the hint button shows both
-its time and point cost, the solved screen shows a points badge, and the
-finish screen leads with a 🦌 STAG SCORE card before the regular scoreboard.
+amber past target, red past the decay window), a live 🏆 points chip sits
+beside it showing exactly what solving *right now* would earn (ticking down
+in real time, and dropping the instant a hint is revealed — no need to wait
+for the solved screen to see a penalty land), the hint button shows both its
+time and point cost, the solved screen shows a points badge, and the finish
+screen leads with a 🦌 STAG SCORE card before the regular scoreboard.
 
 **Showing the clock and counting toward the score are two separate
 switches.** Each stop's "Scoring & timer" section has its own "Show a live

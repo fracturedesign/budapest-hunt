@@ -346,11 +346,18 @@ button, input { -webkit-tap-highlight-color: transparent; }
 
 /* ─────────────────────────────────────────────────────────── task timer ── */
 
+.task-timer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: -4px 0 16px;
+}
+
 .task-timer {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin: -4px 0 16px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -375,6 +382,26 @@ button, input { -webkit-tap-highlight-color: transparent; }
  * against them. Past the decay window: it's bottomed out at the floor. */
 .task-timer.task-timer-warn #taskTimerValue { color: var(--amber); }
 .task-timer.task-timer-bad #taskTimerValue { color: var(--red); }
+
+/* Live points readout — a running preview of "if you solved it right now,
+ * this is what you'd get", so hint/time penalties are visible as they
+ * happen instead of being a surprise on the solved screen. Same warn/bad
+ * colour thresholds as the timer, driven by the same elapsed time, so the
+ * two chips always agree about how much trouble you're in. */
+.task-points {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  background: var(--bg-raised);
+  white-space: nowrap;
+}
+.task-points.task-points-warn { color: var(--amber); border-color: #6b5117; }
+.task-points.task-points-bad  { color: var(--red);   border-color: #5c2f2b; }
 
 /* ────────────────────────────────────────────────────────── photo capture ── */
 

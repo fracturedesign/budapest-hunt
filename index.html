@@ -103,10 +103,15 @@
 
     <p class="arrival-note" id="arrivalNote"></p>
 
-    <!-- This stop's own clock — only shows for stops the organiser scored. -->
-    <div class="task-timer" id="taskTimer" hidden>
-      <span id="taskTimerValue">0:00</span>
-      <span class="task-timer-target" id="taskTimerTarget"></span>
+    <!-- This stop's own clock (left) and a live points readout (right).
+         Each has its own visibility rule — shouldShowTimer() vs
+         isScoredStop() — since a stop can have either without the other. -->
+    <div class="task-timer-row">
+      <div class="task-timer" id="taskTimer" hidden>
+        <span id="taskTimerValue">0:00</span>
+        <span class="task-timer-target" id="taskTimerTarget"></span>
+      </div>
+      <div class="task-points" id="taskPoints" hidden></div>
     </div>
 
     <div class="badge badge-warn" id="placeholderBadge" hidden></div>
