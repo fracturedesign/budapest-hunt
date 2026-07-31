@@ -565,6 +565,15 @@ button, input { -webkit-tap-highlight-color: transparent; }
 }
 .hint-btn:active { background: var(--bg-raised); }
 
+/* Hints beyond the next one in line — visible so the group knows more exist,
+ * but not revealable until every earlier hint has been opened. */
+.hint-btn-locked {
+  opacity: .4;
+  cursor: not-allowed;
+  filter: grayscale(60%);
+}
+.hint-btn-locked:active { background: transparent; }
+
 .hint-revealed {
   background: #241f14;
   border: 1px solid #4a3f2c;

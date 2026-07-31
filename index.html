@@ -133,8 +133,6 @@
       <figcaption id="puzzleCaption"></figcaption>
     </figure>
 
-    <div id="hintZone" class="hint-zone"></div>
-
     <!-- Optional "take a photo" control — see wantsPhotoCapture() in app.js.
          On by default for "dare" stops, off otherwise, either way overridable
          per stop. Purely local: the shot is saved to the phone's camera roll
@@ -194,6 +192,8 @@
 
     <!-- type: "dare" / "info" — nothing to answer, just confirm and move on -->
     <button class="btn btn-primary btn-huge" id="btnConfirmDone" hidden></button>
+
+    <div id="hintZone" class="hint-zone"></div>
 
     <!-- Explains why the proceed control above is greyed out, when a stop
          requires photo proof and none has been attached yet. -->

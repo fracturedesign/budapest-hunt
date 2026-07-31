@@ -422,6 +422,8 @@
     hintButtonFree:   "💡 Reveal hint {n}",
     hintButtonScored: "💡 Reveal hint {n}  (+{min} min, −{pts} pts)",
     hintButtonFreeScored: "💡 Reveal hint {n}  (−{pts} pts)",
+    hintButtonLocked: "🔒 Hint {n}",
+    hintLockedTitle:  "Reveal the earlier hints first",
     hintTag:          "Hint {n}",
     skipButton:       "Give up on this one (+{min} min penalty)",
     backToClue:       "← re-read the travel clue",
@@ -1185,6 +1187,16 @@
         div.appendChild(tag);
         div.appendChild(body);
         zone.appendChild(div);
+      } else if (i > used.length) {
+        // Not next in line yet — shown so the group knows it exists, but
+        // locked until every earlier hint has been revealed first.
+        var locked = document.createElement("button");
+        locked.type = "button";
+        locked.className = "hint-btn hint-btn-locked";
+        locked.disabled = true;
+        locked.title = t("hintLockedTitle");
+        locked.textContent = t("hintButtonLocked", { n: i + 1 });
+        zone.appendChild(locked);
       } else {
         var btn = document.createElement("button");
         btn.type = "button";

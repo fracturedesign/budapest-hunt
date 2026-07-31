@@ -1051,6 +1051,8 @@
       ["hintButtonFree",       "Reveal a hint (hints free, unscored)"],
       ["hintButtonScored",     "Reveal a hint (time + point penalty)"],
       ["hintButtonFreeScored", "Reveal a hint (hints free, but scored)"],
+      ["hintButtonLocked", "A later hint, before it's unlocked"],
+      ["hintLockedTitle",  "Tooltip on a locked hint"],
       ["hintTag",        "Label above a revealed hint"],
       ["skipButton",     "Give up on a stop"],
       ["taskTimerTarget", "Target-time readout next to the per-stop clock"],
