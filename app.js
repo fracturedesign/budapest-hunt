@@ -395,6 +395,7 @@
     photoCaptureLabel: "📸 Photo proof",
     takePhotoButton:   "📸 Take a photo",
     retakePhotoButton: "↺ Retake",
+    pickPhotoButton:   "Camera not opening? Choose an existing photo instead",
     photoCaptureNote:  "Saved to your phone's camera roll automatically. Also kept in this browser so the group can see it again before finishing — but only on this device; it isn't uploaded anywhere.",
 
     // solved screen
@@ -883,6 +884,7 @@
 
     $("btnTakePhoto").textContent = stop.takePhotoButton || t("takePhotoButton");
     $("btnRetakePhoto").textContent = t("retakePhotoButton");
+    $("btnPickPhoto").textContent = t("pickPhotoButton");
   }
 
   /** The live per-stop clock shown on the puzzle screen. Shown or hidden per
@@ -1315,15 +1317,25 @@
   $("btnNext").addEventListener("click", advance);
 
   /* ---- photo capture -------------------------------------------------------
-   * One hidden <input type=file capture=environment> does double duty for
-   * both "take a photo" and "retake" — opening it always hands back a fresh
-   * shot. `capture=environment` opens the rear camera directly on phones;
-   * desktop browsers just fall back to an ordinary file picker. */
+   * TWO hidden file inputs, both feeding the same handler:
+   *   - #photoCaptureInput has capture=environment — opens the camera app
+   *     directly on phones (desktop just falls back to a file picker).
+   *   - #photoPickInput has no `capture` attribute — opens the phone's
+   *     ordinary photo picker instead. This exists as a fallback: iOS gates
+   *     direct camera capture behind a per-site permission that's easy to
+   *     fumble (deny once, accidentally, with no obvious way back short of
+   *     digging into Settings), while the plain picker uses iOS's modern
+   *     one-shot photo picker, which asks for no permission at all. Either
+   *     way the photo already exists in the camera roll — the OS put it
+   *     there the moment it was taken with any camera app — so picking it
+   *     from the library afterward produces an identical result to a direct
+   *     capture; it's a full alternate path, not a lesser one. */
 
   $("btnTakePhoto").addEventListener("click", function () { $("photoCaptureInput").click(); });
   $("btnRetakePhoto").addEventListener("click", function () { $("photoCaptureInput").click(); });
+  $("btnPickPhoto").addEventListener("click", function () { $("photoPickInput").click(); });
 
-  $("photoCaptureInput").addEventListener("change", function () {
+  function handlePickedPhoto() {
     var file = this.files && this.files[0];
     this.value = "";                    // so picking the same file again still fires "change"
     if (!file) return;
@@ -1340,7 +1352,10 @@
     }).catch(function (err) {
       alert("Couldn't use that photo: " + err.message);
     });
-  });
+  }
+
+  $("photoCaptureInput").addEventListener("change", handlePickedPhoto);
+  $("photoPickInput").addEventListener("change", handlePickedPhoto);
 
   $("btnReset").addEventListener("click", function () {
     if (!confirm("Wipe everything and start a fresh hunt?")) return;

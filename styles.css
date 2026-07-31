@@ -394,6 +394,20 @@ button, input { -webkit-tap-highlight-color: transparent; }
   margin-bottom: 0;
 }
 
+.btn-photo-fallback {
+  display: block;
+  width: auto;
+  margin: 10px auto 0;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  min-height: auto;
+  padding: 8px;
+}
+
 .photo-capture-preview {
   margin: 0;
   text-align: center;

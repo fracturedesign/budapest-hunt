@@ -137,7 +137,22 @@
         <img id="photoCaptureImg" alt="Photo taken for this stop">
         <button class="btn btn-ghost btn-small" id="btnRetakePhoto" type="button">↺ Retake</button>
       </figure>
+      <!-- Fallback for when the camera won't open directly (a fumbled
+           per-site camera permission on iOS is the usual cause, and once
+           denied there's no in-page way to re-prompt for it). Always
+           available, whether or not a photo has been taken yet. Uses a
+           plain file input with no `capture` attribute, which iOS/Android
+           both hand off to their modern one-shot photo picker — a flow
+           that doesn't ask for any permission at all, so it works even
+           when the direct-camera button is stuck. The real photo was
+           already saved to the camera roll by the OS the moment it was
+           taken (with literally any camera app), so picking it from here
+           works exactly the same as taking it fresh. -->
+      <button class="btn btn-ghost btn-small btn-photo-fallback" id="btnPickPhoto" type="button">
+        Camera not opening? Choose an existing photo instead
+      </button>
       <input type="file" id="photoCaptureInput" accept="image/*" capture="environment" hidden>
+      <input type="file" id="photoPickInput" accept="image/*" hidden>
       <p class="footnote" id="photoCaptureNote"></p>
     </div>
 

@@ -1033,11 +1033,14 @@
       ["backToClue",     "Re-read the travel clue"],
       ["resetButton",    "Reset the hunt"]
     ]},
-    { title: "Hints & skipping", note: "{n} becomes the hint number, {min} the penalty in minutes.", keys: [
-      ["hintButton",     "Reveal a hint (with a penalty)"],
-      ["hintButtonFree", "Reveal a hint (when hints are free)"],
+    { title: "Hints & skipping", note: "{n} becomes the hint number, {min} the penalty in minutes, {pts} the point cost.", keys: [
+      ["hintButton",           "Reveal a hint (time penalty only)"],
+      ["hintButtonFree",       "Reveal a hint (hints free, unscored)"],
+      ["hintButtonScored",     "Reveal a hint (time + point penalty)"],
+      ["hintButtonFreeScored", "Reveal a hint (hints free, but scored)"],
       ["hintTag",        "Label above a revealed hint"],
-      ["skipButton",     "Give up on a stop"]
+      ["skipButton",     "Give up on a stop"],
+      ["taskTimerTarget", "Target-time readout next to the per-stop clock"]
     ]},
     { title: "Answer area", note: "", keys: [
       ["answerLabel",       "Label above the answer box"],
@@ -1060,7 +1063,18 @@
     { title: "Success screen", note: "", keys: [
       ["solvedTick",     "Big emoji"],
       ["skippedTitle",   "Headline when they gave up"],
-      ["skippedMessage", "Message when they gave up"]
+      ["skippedMessage", "Message when they gave up"],
+      ["solvedPoints",        "Points earned ({earned}, {possible})"],
+      ["solvedPointsSkipped", "Points shown after a skip ({possible})"]
+    ]},
+    { title: "Photo capture", note: "Shown on any stop with photo capture turned on (see that stop's own \"Photo capture\" section).", keys: [
+      ["photoCaptureLabel",  "Heading above the photo control"],
+      ["takePhotoButton",    "\"Take a photo\" button"],
+      ["retakePhotoButton",  "\"Retake\" button"],
+      ["pickPhotoButton",    "Fallback link if the camera won't open"],
+      ["photoCaptureNote",   "Small print explaining where the photo goes"],
+      ["photoRecapTitle",    "\"Photos from tonight\" heading on the finish screen"],
+      ["photoRecapNote",     "Small print under that recap grid"]
     ]},
     { title: "Start & finish screens", note: "", keys: [
       ["startKicker",    "Small line above the title (hidden unless you set one)"],
@@ -1070,7 +1084,10 @@
       ["recapSummary",   "The collapsible route recap heading"],
       ["recapSolved",    "Suffix on a solved stop in the recap"],
       ["recapSkipped",   "Suffix on a skipped stop in the recap"],
-      ["noPenalty",      "Shown when they took no penalties"]
+      ["recapPoints",    "Points suffix on a scored stop in the recap ({earned}, {possible})"],
+      ["noPenalty",      "Shown when they took no penalties"],
+      ["stagKicker",     "\"STAG SCORE\" heading on the finish screen"],
+      ["stagPoints",     "Points readout on the STAG card ({earned}, {possible}, {percent})"]
     ]},
     { title: "Scoreboard captions", note: "", keys: [
       ["scoreFinalLabel",   "Final time"],
