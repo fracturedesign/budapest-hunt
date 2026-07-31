@@ -358,6 +358,19 @@ ok("info stop has no photo control by default",       !L.wantsPhotoCapture({ typ
 ok("explicit true turns it on for a text stop",         L.wantsPhotoCapture({ type: "text", photoCapture: true }));
 ok("explicit false turns it off for a dare stop",      !L.wantsPhotoCapture({ type: "dare", photoCapture: false }));
 
+// --- isPhotoRequired: gates progression wherever capture is on ------------
+ok("required by default on a dare stop",        L.isPhotoRequired({ type: "dare" }));
+ok("required by default wherever capture is on",
+   L.isPhotoRequired({ type: "text", photoCapture: true }));
+ok("opt-out with photoRequired:false",         !L.isPhotoRequired({ type: "dare", photoRequired: false }));
+ok("never required when capture is off",       !L.isPhotoRequired({ type: "text" }));
+ok("never required when capture explicitly off",
+   !L.isPhotoRequired({ type: "dare", photoCapture: false }));
+// photoRequired:true on a stop with no capture control would be unwinnable —
+// there'd be no way to attach the photo it's demanding.
+ok("photoRequired:true can't strand a stop with no capture control",
+   !L.isPhotoRequired({ type: "text", photoCapture: false, photoRequired: true }));
+
 /* ══════════════════════════════════════════════ 4. TIMER & PENALTIES ══ */
 section("4. Timer, penalties, scoring");
 

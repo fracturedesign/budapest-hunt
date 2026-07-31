@@ -231,6 +231,19 @@
     return stopType(stop) === "dare";
   }
 
+  /**
+   * Must a photo be attached before this stop can be completed?
+   *
+   * Defaults to YES wherever photo capture is switched on — if a stop asks
+   * for photo proof, letting the group tap past it without one defeats the
+   * point. Set `photoRequired: false` on a stop to make the photo optional
+   * instead. Never true when photo capture is off, obviously.
+   */
+  function isPhotoRequired(stop) {
+    if (!wantsPhotoCapture(stop)) return false;
+    return !(stop && stop.photoRequired === false);
+  }
+
   /** First argument that's an actual number, or 0. */
   function numberOr() {
     for (var i = 0; i < arguments.length; i++) {
@@ -397,6 +410,7 @@
     retakePhotoButton: "↺ Retake",
     pickPhotoButton:   "Or choose one from your photos",
     savePhotoButton:   "⬇️ Save to my Photos",
+    photoRequiredNote: "📸 Take the photo first — no proof, no progress.",
     photoCaptureNote:  "Photos taken in here do NOT go to your camera roll on their own — tap \"Save to my Photos\" and choose Save Image to keep one. The app also keeps a small copy on this phone for the recap at the end; nothing is uploaded anywhere.",
 
     // solved screen
@@ -472,6 +486,7 @@
     isScoredStop: isScoredStop,
     shouldShowTimer: shouldShowTimer,
     wantsPhotoCapture: wantsPhotoCapture,
+    isPhotoRequired: isPhotoRequired,
     resolveScoring: resolveScoring,
     computeStopPoints: computeStopPoints,
     stopPointsEarned: stopPointsEarned,
@@ -930,11 +945,42 @@
 
     paintAnswerUI(stop, type);
     paintPhotoCapture(stop);
+    // Must run after BOTH of the above: it disables controls that
+    // paintAnswerUI creates, based on the photo state paintPhotoCapture drew.
+    applyPhotoGate(stop);
     setFeedback("", "");
     paintHints();
     paintSkip();
     paintTaskTimer();
     paintHud();
+  }
+
+  /**
+   * Lock every "move on" control until this stop's required photo exists.
+   *
+   * Covers all three answer mechanisms, since photo capture can be turned on
+   * for any task type — the dare/info confirm button, the text Submit, and
+   * each multiple-choice option. Always runs, including when no photo is
+   * required, so controls can never stay stuck disabled from a previous stop.
+   */
+  function applyPhotoGate(stop) {
+    var locked = isPhotoRequired(stop) && !photos[stop.id];
+
+    var note = $("photoGateNote");
+    if (note) {
+      note.textContent = t("photoRequiredNote");
+      note.hidden = !locked;
+    }
+
+    var controls = [$("btnConfirmDone"), $("btnSubmit")];
+    var choices = document.querySelectorAll("#choiceButtons .btn-choice");
+    for (var i = 0; i < choices.length; i++) controls.push(choices[i]);
+
+    controls.forEach(function (el) {
+      if (!el) return;
+      el.disabled = locked;
+      el.classList.toggle("btn-locked", locked);
+    });
   }
 
   /** The optional "take a photo" control. See wantsPhotoCapture(). */
@@ -1110,6 +1156,15 @@
    */
   function submitValue(raw, shakeEl) {
     var stop = currentStop();
+
+    // Hard gate, not just a greyed-out button: a text stop can still be
+    // submitted with the keyboard's Enter/Go key, which bypasses the disabled
+    // state on the Submit button entirely.
+    if (isPhotoRequired(stop) && !photos[stop.id]) {
+      setFeedback(t("photoRequiredNote"), "bad");
+      return;
+    }
+
     var result = checkAnswer(stop, raw);
 
     if (result.empty) {
@@ -1422,6 +1477,7 @@
       photos[stop.id] = dataUri;
       var ok = savePhotos();
       paintPhotoCapture(stop);
+      applyPhotoGate(stop);          // unlock the proceed button straight away
       if (!ok) {
         setFeedback("Photo attached, but this browser is out of storage space to " +
                      "keep a copy for the recap. Save it to your Photos now so it isn't lost.", "bad");

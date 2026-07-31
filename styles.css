@@ -665,6 +665,28 @@ button, input { -webkit-tap-highlight-color: transparent; }
 .btn-choice:active { background: var(--bg-raised); border-color: var(--gold); }
 .btn-choice.shake { animation: shake .32s; border-color: var(--red); }
 
+/* ──────────────────────────────────────────── locked-until-photo state ── */
+
+/* Applied to whichever "move on" control a stop uses, while it still needs
+ * photo proof. Deliberately still legible rather than near-invisible — it
+ * should read as "not yet", not as "broken". */
+.btn-locked,
+.btn:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: grayscale(60%);
+}
+.btn-locked:active { transform: none; }
+
+.photo-gate-note {
+  margin: -4px 0 18px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--amber);
+}
+
 /* ────────────────────────────────────────────────────────────── solved ── */
 
 .big-tick { font-size: 64px; line-height: 1; margin: 26px 0 12px; }

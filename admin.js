@@ -734,6 +734,19 @@
           "no server in this project to upload it to.")
     );
     if (photoOn) {
+      var required = HuntLogic.isPhotoRequired(stop);
+      fsPhoto.appendChild(field("Require the photo to continue",
+        selectInput(String(required), [
+          { value: "true",  label: "Yes — can't move on without one" },
+          { value: "false", label: "No — the photo is optional" }
+        ], function (v) {
+          if (v === "true") delete stop.photoRequired; else stop.photoRequired = false;
+          touch();
+          renderEditor();
+        }),
+        required
+          ? "The proceed button stays greyed out until a photo is attached — on every task type, and it can't be bypassed with the keyboard either."
+          : "Players can finish this stop without taking a photo."));
       fsPhoto.appendChild(field("\"Take a photo\" button text",
         textInput(stop.takePhotoButton, function (v) { stop.takePhotoButton = v; touch(); }),
         "Leave blank for the game-wide default."));
@@ -1072,6 +1085,7 @@
       ["takePhotoButton",    "\"Take a photo\" button"],
       ["retakePhotoButton",  "\"Retake\" button"],
       ["savePhotoButton",    "\"Save to my Photos\" button (opens the share sheet)"],
+      ["photoRequiredNote",  "Shown while the proceed button is locked awaiting a photo"],
       ["pickPhotoButton",    "Link to attach an existing photo instead"],
       ["photoCaptureNote",   "Small print explaining where the photo goes"],
       ["photoRecapTitle",    "\"Photos from tonight\" heading on the finish screen"],
