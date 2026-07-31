@@ -397,9 +397,9 @@
     startKicker:      "",   // blank by default — the element hides itself when empty
     howToTitle:       "How this works",
     scoringExplainerTitle: "🏆 How scoring works",
-    startFootnote:    "Best on one phone, passed around. Close it, lose it, drop it — reopen the link and you're back where you were.",
-    hintCostNote:     "Each hint you reveal adds {min} minutes to your final time.",
-    hintCostNoteFree: "Hints are free. Your honour is your own business.",
+    startFootnote:    "",   // blank by default — hides itself, same convention as startKicker
+    hintCostNote:     "",   // blank by default — hides itself
+    hintCostNoteFree: "",   // blank by default — hides itself
     factGroom:        "Groom",
     factStops:        "Stops",
     factDuration:     "Time",
@@ -863,7 +863,9 @@
     $("startKicker").textContent = kicker;
     $("startKicker").hidden = !kicker;
     $("howToTitle").textContent = t("howToTitle");
-    $("startFootnote").textContent = t("startFootnote");
+    var footnote = t("startFootnote");
+    $("startFootnote").textContent = footnote;
+    $("startFootnote").hidden = !footnote;
 
     setLabel("factGroom", "factGroom");
     setLabel("factStops", "factStops");
@@ -885,9 +887,11 @@
       ul.appendChild(li);
     });
 
-    $("hintCostNote").textContent = C.hintPenaltyMinutes > 0
+    var costNote = C.hintPenaltyMinutes > 0
       ? t("hintCostNote", { min: C.hintPenaltyMinutes, skipMin: C.skipPenaltyMinutes })
       : t("hintCostNoteFree");
+    $("hintCostNote").textContent = costNote;
+    $("hintCostNote").hidden = !costNote;
 
     paintScoringExplainer();
 
