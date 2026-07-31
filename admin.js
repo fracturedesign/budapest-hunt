@@ -1071,7 +1071,8 @@
       ["photoCaptureLabel",  "Heading above the photo control"],
       ["takePhotoButton",    "\"Take a photo\" button"],
       ["retakePhotoButton",  "\"Retake\" button"],
-      ["pickPhotoButton",    "Fallback link if the camera won't open"],
+      ["savePhotoButton",    "\"Save to my Photos\" button (opens the share sheet)"],
+      ["pickPhotoButton",    "Link to attach an existing photo instead"],
       ["photoCaptureNote",   "Small print explaining where the photo goes"],
       ["photoRecapTitle",    "\"Photos from tonight\" heading on the finish screen"],
       ["photoRecapNote",     "Small print under that recap grid"]

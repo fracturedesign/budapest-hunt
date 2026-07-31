@@ -135,21 +135,21 @@
       </div>
       <figure class="photo-capture-preview" id="photoCapturePreview" hidden>
         <img id="photoCaptureImg" alt="Photo taken for this stop">
+        <!-- The ONLY way to get this into the iOS Photos app. A photo taken
+             through <input type=file capture> is handed to the page and then
+             dropped by Safari — it is never written to the camera roll on its
+             own, and no web API can do that silently. navigator.share() opens
+             the native share sheet, where "Save Image" files it into Photos. -->
+        <button class="btn btn-primary btn-small" id="btnSavePhoto" type="button">⬇️ Save to my Photos</button>
         <button class="btn btn-ghost btn-small" id="btnRetakePhoto" type="button">↺ Retake</button>
       </figure>
-      <!-- Fallback for when the camera won't open directly (a fumbled
-           per-site camera permission on iOS is the usual cause, and once
-           denied there's no in-page way to re-prompt for it). Always
-           available, whether or not a photo has been taken yet. Uses a
-           plain file input with no `capture` attribute, which iOS/Android
-           both hand off to their modern one-shot photo picker — a flow
-           that doesn't ask for any permission at all, so it works even
-           when the direct-camera button is stuck. The real photo was
-           already saved to the camera roll by the OS the moment it was
-           taken (with literally any camera app), so picking it from here
-           works exactly the same as taking it fresh. -->
+      <!-- Second, permission-free route to attaching a photo: a plain file
+           input with no `capture` attribute, which iOS/Android hand off to
+           their ordinary photo picker. Useful if the group would rather
+           shoot in the real Camera app (which DOES save to the camera roll)
+           and then attach it here. -->
       <button class="btn btn-ghost btn-small btn-photo-fallback" id="btnPickPhoto" type="button">
-        Camera not opening? Choose an existing photo instead
+        Or choose one from your photos
       </button>
       <input type="file" id="photoCaptureInput" class="file-input-hidden" accept="image/*" capture="environment">
       <input type="file" id="photoPickInput" class="file-input-hidden" accept="image/*">

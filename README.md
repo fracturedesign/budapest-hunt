@@ -195,18 +195,29 @@ honour this; desktop browsers just fall back to an ordinary file picker).
 **What "stored" actually means here, because it's easy to assume more than
 is true:**
 
-- The full-resolution photo is saved to the phone's **camera roll**
-  automatically — that's just how taking a photo with the hardware camera
-  works, nothing in this app does that part.
+- **A photo taken in-app does NOT land in the camera roll by itself.** When
+  the camera opens *inside the browser* like this, iOS hands the shot
+  straight to the web page and then throws it away — only the real Camera
+  app writes to Photos. No web API can save to the album silently, so the
+  app shows a **"⬇️ Save to my Photos"** button that opens the native share
+  sheet, where **Save Image** puts it in the album. It has to be tapped, per
+  photo. (On desktop, that button downloads the file instead.)
 - A small, downscaled copy (capped at 640px, so a few KB to a couple hundred
   KB) is kept **in that phone's browser only**, so the group can see a "got
   it" preview and a recap grid on the finish screen before the hunt ends.
+  The share button hands over the **full-resolution** original where it
+  can — after a page reload it can only offer the smaller stored copy, so
+  save early rather than at the end.
 - **Nothing is uploaded anywhere.** This project is a static site with no
   backend and nowhere to send a file to (see [Architecture](#8-known-limits)
   below) — there is no shared album, no server copy, and no way to see a
   photo from a different device. If the browser's storage is cleared, or a
-  different phone continues the game, that photo is gone; screenshot or
-  share it before then.
+  different phone continues the game, anything not saved to Photos is gone.
+
+> If keeping the photos matters more than the in-app flow, the most reliable
+> option on the night is simply: shoot it in the **normal Camera app** (which
+> always saves to the album), then use **"Or choose one from your photos"** to
+> attach it to the stop. Belt and braces.
 
 If you want photos genuinely centralised — visible from any device, not just
 the one that took them — that needs real infrastructure this project
@@ -430,10 +441,12 @@ localStorage.removeItem('budapest-hunt-v1')
 - **One phone, one game.** State is per-device. If two people open the link
   they get two independent hunts. That's intentional — one phone passed around
   is the better format anyway.
-- **Photos never leave the phone that took them.** Players can capture a
-  photo in-app (see [Photo capture](#photo-capture) above) — it saves to
-  that phone's camera roll automatically and a small copy is kept in that
-  phone's browser for an in-app preview and recap. There's no shared album,
+- **Photos never leave the phone that took them, and don't reach the camera
+  roll unprompted.** Players can capture a photo in-app (see
+  [Photo capture](#photo-capture) above), but keeping it means tapping
+  "Save to my Photos" and choosing Save Image — a browser page can't write
+  to the album on its own. A small copy stays in that phone's browser for
+  the in-app preview and recap. There's no shared album,
   no server copy, no way to see it from a different device. Actually
   centralising photos needs a real backend, which this project deliberately
   doesn't have (see that section for the zero-code workaround).

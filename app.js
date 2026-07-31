@@ -395,8 +395,9 @@
     photoCaptureLabel: "📸 Photo proof",
     takePhotoButton:   "📸 Take a photo",
     retakePhotoButton: "↺ Retake",
-    pickPhotoButton:   "Camera not opening? Choose an existing photo instead",
-    photoCaptureNote:  "Saved to your phone's camera roll automatically. Also kept in this browser so the group can see it again before finishing — but only on this device; it isn't uploaded anywhere.",
+    pickPhotoButton:   "Or choose one from your photos",
+    savePhotoButton:   "⬇️ Save to my Photos",
+    photoCaptureNote:  "Photos taken in here do NOT go to your camera roll on their own — tap \"Save to my Photos\" and choose Save Image to keep one. The app also keeps a small copy on this phone for the recap at the end; nothing is uploaded anywhere.",
 
     // solved screen
     solvedTick:       "✅",
@@ -425,7 +426,7 @@
     stagKicker:       "🦌 STAG SCORE",
     stagPoints:       "{earned} / {possible} pts  ({percent}%)",
     photoRecapTitle:  "📸 Photos from tonight",
-    photoRecapNote:   "Saved on this phone only — screenshot or share them before you clear your browser data.",
+    photoRecapNote:   "These live in this browser only, and they're the small preview copies — tap any one to open it, then long-press to add it to your Photos before you clear your browser data.",
 
     // hud
     hudProgress:      "Stop {n} of {total}",
@@ -612,6 +613,16 @@
   var PHOTOS_KEY = STORAGE_KEY + "-photos";
   var photos = loadPhotos();     // { stopId: "data:image/jpeg;base64,..." }
 
+  /**
+   * The untouched File objects exactly as the camera handed them over, kept
+   * in memory for this page-session only — never persisted, since a handful
+   * of full-resolution phone photos would blow the localStorage quota
+   * instantly. Used purely so "Save to Photos" can hand iOS the real
+   * full-res shot rather than the downscaled preview copy. Lost on reload,
+   * which is fine: saveToPhotos() falls back to the stored copy then.
+   */
+  var originalPhotoFiles = {};   // { stopId: File }
+
   function loadPhotos() {
     try {
       var parsed = JSON.parse(localStorage.getItem(PHOTOS_KEY));
@@ -626,12 +637,14 @@
   }
 
   /**
-   * Downscale a photo captured/picked on the player's phone before storing
-   * it. This copy is an ephemeral in-app confirmation thumbnail, not
-   * published game content — the full-resolution original already lives
-   * safely in the phone's own camera roll (the OS saves it there the moment
-   * the shutter fires, before this code ever sees the file), so this copy
-   * can stay small and disposable.
+   * Downscale a photo before storing it, so localStorage isn't handed a
+   * multi-megabyte original.
+   *
+   * NOTE: this copy is the app's own preview/recap thumbnail. It is NOT a
+   * throwaway duplicate of something already in the camera roll — a photo
+   * taken through <input type=file capture> is handed straight to the page
+   * and never written to the iOS Photos app at all. Getting it into the
+   * album takes an explicit share (see saveToPhotos below).
    */
   function downscalePhoto(file) {
     return new Promise(function (resolve, reject) {
@@ -661,6 +674,64 @@
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  /** Rebuild a File from a stored data URI, for sharing after a page reload. */
+  function dataUriToFile(uri, filename) {
+    var parts = String(uri).split(",");
+    var mimeMatch = /^data:([^;]+)/.exec(parts[0]);
+    var mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+    var binary = atob(parts[1]);
+    var bytes = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], filename, { type: mime });
+  }
+
+  /**
+   * Get a stop's photo into the phone's actual photo album.
+   *
+   * There is no web API that can write to the iOS Photos app directly, and a
+   * photo taken via <input type=file capture> is never auto-saved there —
+   * Safari hands it to the page and drops it. The Web Share API is the only
+   * real route: it opens the native share sheet, where "Save Image" files it
+   * into Photos. Falls back to a plain download where sharing files isn't
+   * supported (most desktop browsers), which at least gets it onto disk.
+   *
+   * Must be called straight from a tap — iOS requires transient user
+   * activation for navigator.share.
+   */
+  function saveToPhotos(stop) {
+    var file = originalPhotoFiles[stop.id];   // full-res, if still in memory
+    if (!file) {
+      var uri = photos[stop.id];              // else the downscaled copy
+      if (!uri) return;
+      try { file = dataUriToFile(uri, "hunt-photo.jpg"); }
+      catch (e) { return; }
+    }
+
+    var name = (stop.name || stop.id || "photo").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    var shareFile = new File([file], name + ".jpg", { type: file.type || "image/jpeg" });
+
+    if (navigator.canShare && navigator.canShare({ files: [shareFile] })) {
+      navigator.share({ files: [shareFile] }).catch(function (err) {
+        // AbortError just means they dismissed the sheet — not worth a message.
+        if (err && err.name !== "AbortError") {
+          setFeedback("Couldn't open the share sheet. Long-press the photo above " +
+                      "and choose \"Add to Photos\" instead.", "bad");
+        }
+      });
+      return;
+    }
+
+    // No file sharing available: download it instead.
+    var url = URL.createObjectURL(shareFile);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = shareFile.name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
   }
 
   /* ---- small helpers ------------------------------------------------------ */
@@ -885,6 +956,7 @@
     $("btnTakePhoto").textContent = stop.takePhotoButton || t("takePhotoButton");
     $("btnRetakePhoto").textContent = t("retakePhotoButton");
     $("btnPickPhoto").textContent = t("pickPhotoButton");
+    $("btnSavePhoto").textContent = t("savePhotoButton");
   }
 
   /** The live per-stop clock shown on the puzzle screen. Shown or hidden per
@@ -1334,6 +1406,7 @@
   $("btnTakePhoto").addEventListener("click", function () { $("photoCaptureInput").click(); });
   $("btnRetakePhoto").addEventListener("click", function () { $("photoCaptureInput").click(); });
   $("btnPickPhoto").addEventListener("click", function () { $("photoPickInput").click(); });
+  $("btnSavePhoto").addEventListener("click", function () { saveToPhotos(currentStop()); });
 
   function handlePickedPhoto() {
     var file = this.files && this.files[0];
@@ -1341,13 +1414,17 @@
     if (!file) return;
 
     var stop = currentStop();
+    // Hold on to the untouched original so "Save to my Photos" can hand iOS
+    // the full-resolution shot rather than the shrunken preview copy.
+    originalPhotoFiles[stop.id] = file;
+
     downscalePhoto(file).then(function (dataUri) {
       photos[stop.id] = dataUri;
       var ok = savePhotos();
       paintPhotoCapture(stop);
       if (!ok) {
-        setFeedback("Photo taken — it's in your camera roll — but this browser is out of " +
-                     "storage space to also keep a copy in the app.", "bad");
+        setFeedback("Photo attached, but this browser is out of storage space to " +
+                     "keep a copy for the recap. Save it to your Photos now so it isn't lost.", "bad");
       }
     }).catch(function (err) {
       alert("Couldn't use that photo: " + err.message);
