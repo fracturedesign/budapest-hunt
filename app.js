@@ -373,7 +373,6 @@
     "Each stop has its own clock, starting the moment you arrive — not while you're still walking there.",
     "Solve within the target time (default {target}) for full points; take longer and they decay down to a floor.",
     "Every hint you reveal costs points too, on top of the extra minutes it adds.",
-    "Skipping a stop scores zero for it — the one outcome worse than just being slow.",
     "Add it all up at the end and you're crowned with a STAG title, from Roadkill Stag to Legendary Stag."
   ];
 
@@ -399,7 +398,7 @@
     howToTitle:       "How this works",
     scoringExplainerTitle: "🏆 How scoring works",
     startFootnote:    "Best on one phone, passed around. Close it, lose it, drop it — reopen the link and you're back where you were.",
-    hintCostNote:     "Each hint you reveal adds {min} minutes to your final time. Skipping a stop entirely costs {skipMin}.",
+    hintCostNote:     "Each hint you reveal adds {min} minutes to your final time.",
     hintCostNoteFree: "Hints are free. Your honour is your own business.",
     factGroom:        "Groom",
     factStops:        "Stops",
