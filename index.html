@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="theme-color" content="#12100e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="A scavenger hunt through central Budapest.">
+<title>Danil's Last Stand — Budapest</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍺</text></svg>">
+</head>
+<body>
+
+<!-- Shown only when opened as index.html?preview=1 from the editor. -->
+<div class="preview-banner" id="previewBanner" hidden>
+  👁 PREVIEW — showing unsaved editor draft. Progress here is kept separate from the real game.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     HEADER — progress. Hidden on the start screen.
+
+     The overall wall-clock timer still runs (app.js keeps computing it for
+     the finish screen's "on the clock" stat and penalty maths) — it's just
+     not shown up here any more now that each stop has its own visible timer
+     on the puzzle screen. #hudTimer is kept in the DOM (rather than deleted)
+     so paintTimer() has somewhere harmless to write; `hidden` is enough.
+     ══════════════════════════════════════════════════════════════════ -->
+<header id="hud" class="hud" hidden>
+  <div class="hud-row">
+    <div class="hud-progress" id="hudProgress">Stop 1 of 9</div>
+    <div class="hud-right">
+      <div class="hud-timer" id="hudTimer" aria-live="off" hidden>0:00</div>
+      <button class="hud-reset" id="btnHudReset" type="button" title="Start over" aria-label="Start over">⟲</button>
+    </div>
+  </div>
+  <div class="hud-bar"><div class="hud-bar-fill" id="hudBarFill"></div></div>
+</header>
+
+<main id="main">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: START
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen" id="screen-start">
+    <div class="hero">
+      <div class="hero-kicker" id="startKicker">Budapest · District V → VII</div>
+      <h1 class="hero-title" id="startTitle">DANIL'S LAST STAND</h1>
+      <div class="hero-sub" id="startSubtitle">A Budapest Scavenger Hunt</div>
+    </div>
+
+    <figure class="stop-figure" id="startFigure" hidden>
+      <img id="startImage" alt="">
+      <figcaption id="startCaption"></figcaption>
+    </figure>
+
+    <div class="facts">
+      <div class="fact"><span class="fact-label">Groom</span><span class="fact-value" id="factGroom">—</span></div>
+      <div class="fact"><span class="fact-label">Stops</span><span class="fact-value" id="factStops">—</span></div>
+      <div class="fact"><span class="fact-label">Time</span><span class="fact-value" id="factDuration">—</span></div>
+      <div class="fact"><span class="fact-label">Walking</span><span class="fact-value" id="factDistance">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title" id="howToTitle">How this works</h2>
+      <ul class="howto" id="howToList"></ul>
+      <p class="hint-cost-note" id="hintCostNote"></p>
+    </div>
+
+    <button class="btn btn-primary btn-huge" id="btnStart">START THE HUNT</button>
+    <p class="footnote" id="startFootnote"></p>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: TRAVEL CLUE
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen" id="screen-travel" hidden>
+    <div class="stop-head">
+      <div class="stop-num" id="travelStopNum">STOP 1</div>
+      <div class="stop-teaser" id="travelTeaser"></div>
+    </div>
+    <div class="card card-clue">
+      <div class="card-eyebrow" id="travelEyebrow">🧭 Travel clue</div>
+      <div class="prose" id="travelClue"></div>
+    </div>
+    <figure class="stop-figure" id="travelFigure" hidden>
+      <img id="travelImage" alt="Photo for this clue">
+      <figcaption id="travelCaption"></figcaption>
+    </figure>
+    <button class="btn btn-primary btn-huge" id="btnArrived">WE'RE HERE →</button>
+    <p class="footnote" id="travelFootnote"></p>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: PUZZLE + ANSWER
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen" id="screen-puzzle" hidden>
+    <div class="stop-head">
+      <div class="stop-num" id="puzzleStopNum">STOP 1</div>
+      <div class="stop-teaser" id="puzzleName"></div>
+    </div>
+
+    <p class="arrival-note" id="arrivalNote"></p>
+
+    <!-- This stop's own clock — only shows for stops the organiser scored. -->
+    <div class="task-timer" id="taskTimer" hidden>
+      <span id="taskTimerValue">0:00</span>
+      <span class="task-timer-target" id="taskTimerTarget"></span>
+    </div>
+
+    <div class="badge badge-warn" id="placeholderBadge" hidden></div>
+
+    <div class="card">
+      <div class="card-eyebrow" id="puzzleEyebrow">🧩 The puzzle</div>
+      <div class="prose" id="puzzleText"></div>
+    </div>
+
+    <figure class="stop-figure" id="puzzleFigure" hidden>
+      <img id="puzzleImage" alt="Photo for this puzzle">
+      <figcaption id="puzzleCaption"></figcaption>
+    </figure>
+
+    <div id="hintZone" class="hint-zone"></div>
+
+    <!-- Optional "take a photo" control — see wantsPhotoCapture() in app.js.
+         On by default for "dare" stops, off otherwise, either way overridable
+         per stop. Purely local: the shot is saved to the phone's camera roll
+         by the OS as normal, and a small copy is kept in this browser only
+         (never uploaded) so the group can see it again before finishing. -->
+    <div class="photo-capture" id="photoCapture" hidden>
+      <div class="answer-label" id="photoCaptureLabel">📸 Photo proof</div>
+      <div class="photo-capture-box" id="photoCaptureEmpty">
+        <button class="btn btn-ghost btn-photo" id="btnTakePhoto" type="button">📸 Take a photo</button>
+      </div>
+      <figure class="photo-capture-preview" id="photoCapturePreview" hidden>
+        <img id="photoCaptureImg" alt="Photo taken for this stop">
+        <button class="btn btn-ghost btn-small" id="btnRetakePhoto" type="button">↺ Retake</button>
+      </figure>
+      <input type="file" id="photoCaptureInput" accept="image/*" capture="environment" hidden>
+      <p class="footnote" id="photoCaptureNote"></p>
+    </div>
+
+    <!-- ONE of the three below is shown, depending on the stop's `type`. -->
+
+    <!-- type: "text" -->
+    <form id="answerForm" autocomplete="off" hidden>
+      <label class="answer-label" for="answerInput" id="answerLabel">Your answer</label>
+      <input
+        class="answer-input"
+        id="answerInput"
+        type="text"
+        inputmode="text"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        enterkeyhint="go"
+        placeholder="Type it here…">
+      <button class="btn btn-primary btn-huge" type="submit" id="btnSubmit">SUBMIT</button>
+    </form>
+
+    <!-- type: "choice" -->
+    <div id="choiceZone" class="choice-zone" hidden>
+      <div class="answer-label" id="choiceLabel">Pick one</div>
+      <div id="choiceButtons"></div>
+    </div>
+
+    <!-- type: "dare" / "info" — nothing to answer, just confirm and move on -->
+    <button class="btn btn-primary btn-huge" id="btnConfirmDone" hidden></button>
+
+    <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+
+    <button class="btn btn-danger-ghost" id="btnSkip" hidden></button>
+
+    <button class="btn btn-ghost btn-small" id="btnBackToClue">← re-read the travel clue</button>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: SOLVED (interstitial)
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen screen-center" id="screen-solved" hidden>
+    <div class="big-tick" id="solvedTick">✅</div>
+    <h2 class="solved-title" id="solvedTitle">Correct.</h2>
+    <div class="points-badge" id="solvedPoints" hidden></div>
+    <div class="card card-success" id="solvedCard">
+      <div class="prose" id="solvedMessage"></div>
+    </div>
+    <figure class="stop-figure" id="successFigure" hidden>
+      <img id="successImage" alt="">
+      <figcaption id="successCaption"></figcaption>
+    </figure>
+    <button class="btn btn-primary btn-huge" id="btnNext">NEXT CLUE →</button>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: FINISH
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen" id="screen-finish" hidden>
+    <div class="hero hero-finish">
+      <div class="hero-kicker" id="finishKicker">🇭🇺 · Done · 🇭🇺</div>
+      <h1 class="hero-title" id="finishTitle">HUNT COMPLETE 🏆</h1>
+    </div>
+
+    <figure class="stop-figure" id="finishFigure" hidden>
+      <img id="finishImage" alt="">
+      <figcaption id="finishCaption"></figcaption>
+    </figure>
+
+    <!-- Only shown when config.scoring is set up — see admin.html → Scoring. -->
+    <div class="stag-card" id="stagCard" hidden>
+      <div class="stag-kicker" id="stagKicker">🦌 STAG SCORE</div>
+      <div class="stag-level" id="stagLevelName"></div>
+      <div class="stag-points" id="stagPointsValue"></div>
+      <div class="stag-bar"><div class="stag-bar-fill" id="stagBarFill"></div></div>
+      <p class="stag-blurb" id="stagBlurb"></p>
+    </div>
+
+    <!-- Only the photo-capture stops that actually got one appear here. -->
+    <div class="photo-recap" id="photoRecap" hidden>
+      <div class="card-eyebrow" id="photoRecapTitle">📸 Photos from tonight</div>
+      <div class="photo-recap-grid" id="photoRecapGrid"></div>
+      <p class="footnote" id="photoRecapNote"></p>
+    </div>
+
+    <div class="scoreboard">
+      <div class="score score-hero">
+        <span class="score-label">Final time</span>
+        <span class="score-value" id="scoreFinal">—</span>
+      </div>
+      <div class="score-grid">
+        <div class="score"><span class="score-label">On the clock</span><span class="score-value" id="scoreRaw">—</span></div>
+        <div class="score"><span class="score-label">Penalties</span><span class="score-value" id="scorePenalty">—</span></div>
+        <div class="score"><span class="score-label">Stops solved</span><span class="score-value" id="scoreStops">—</span></div>
+        <div class="score"><span class="score-label">Hints burned</span><span class="score-value" id="scoreHints">—</span></div>
+        <div class="score"><span class="score-label">Wrong guesses</span><span class="score-value" id="scoreWrong">—</span></div>
+        <div class="score"><span class="score-label">Stops skipped</span><span class="score-value" id="scoreSkipped">—</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="prose" id="finishBlurb"></div>
+    </div>
+
+    <div class="card card-photo">
+      <div class="card-eyebrow">📸 Final task</div>
+      <div class="prose" id="finalPhotoPrompt"></div>
+      <div class="prose prose-toast" id="finalToast"></div>
+    </div>
+
+    <details class="recap">
+      <summary id="recapSummary">The full route, in case anyone wants to argue about it</summary>
+      <ol class="recap-list" id="recapList"></ol>
+    </details>
+
+    <button class="btn btn-ghost btn-small" id="btnReset">Reset the hunt (start over)</button>
+  </section>
+
+</main>
+
+<!-- Tap any photo to blow it up (useful for spot-the-difference puzzles). -->
+<div class="lightbox" id="lightbox" hidden>
+  <img id="lightboxImage" alt="">
+  <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close">✕</button>
+</div>
+
+<script src="content.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

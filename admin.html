@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#12100e">
+<meta name="robots" content="noindex">
+<title>Hunt Editor — Danil's Last Stand</title>
+<link rel="stylesheet" href="admin.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <h1>🛠 Hunt Editor</h1>
+    <span class="topbar-stats" id="topStats"></span>
+  </div>
+  <div class="topbar-actions">
+    <button class="tb tb-primary" id="btnExportJs">⬇ Export content.js</button>
+    <button class="tb" id="btnPreview">👁 Preview</button>
+    <button class="tb" id="btnExportJson">Backup .json</button>
+    <button class="tb" id="btnImport">Restore .json</button>
+    <button class="tb tb-danger" id="btnDiscard">Discard draft</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<div class="savebar" id="saveBar">Draft autosaved to this browser · not yet exported</div>
+
+<div class="layout">
+
+  <!-- ─────────────────────────────────────────── sidebar: stop list ── -->
+  <aside class="sidebar">
+    <div class="side-section">
+      <button class="side-nav" id="navSettings">⚙️ Game settings</button>
+      <button class="side-nav" id="navLabels">🔤 Buttons &amp; labels</button>
+      <button class="side-nav" id="navTheme">🎨 Theme</button>
+      <button class="side-nav" id="navScoring">🦌 Scoring &amp; STAG levels</button>
+      <button class="side-nav" id="navChecklist">✅ Pre-event checklist</button>
+    </div>
+
+    <div class="side-head">
+      <span>Stops</span>
+      <button class="side-add" id="btnAddStop" title="Add a stop">+ Add</button>
+    </div>
+    <ol class="stop-list" id="stopList"></ol>
+
+    <p class="side-foot">
+      Stops play in this order. Use ↑ ↓ to reorder.
+    </p>
+  </aside>
+
+  <!-- ─────────────────────────────────────────────── editor panel ── -->
+  <main class="editor" id="editor"></main>
+
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="content.js"></script>
+<script src="app.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>
