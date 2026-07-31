@@ -1053,6 +1053,7 @@
       ["hintButtonFreeScored", "Reveal a hint (hints free, but scored)"],
       ["hintButtonLocked", "A later hint, before it's unlocked"],
       ["hintLockedTitle",  "Tooltip on a locked hint"],
+      ["hintZoneLabel",    "\"HINTS\" heading above the hint buttons"],
       ["hintTag",        "Label above a revealed hint"],
       ["skipButton",     "Give up on a stop"],
       ["taskTimerTarget", "Target-time readout next to the per-stop clock"],

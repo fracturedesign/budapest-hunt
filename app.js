@@ -424,6 +424,7 @@
     hintButtonFreeScored: "💡 Reveal hint {n}  (−{pts} pts)",
     hintButtonLocked: "🔒 Hint {n}",
     hintLockedTitle:  "Reveal the earlier hints first",
+    hintZoneLabel:    "Hints",
     hintTag:          "Hint {n}",
     skipButton:       "Give up on this one (+{min} min penalty)",
     backToClue:       "← re-read the travel clue",
@@ -1174,6 +1175,10 @@
     var used = state.hintsUsed[stop.id] || [];
     var zone = $("hintZone");
     zone.innerHTML = "";
+
+    var hasHints = !!(stop.hints && stop.hints.length);
+    $("hintZoneLabel").textContent = t("hintZoneLabel");
+    $("hintZoneLabel").hidden = !hasHints;
 
     (stop.hints || []).forEach(function (text, i) {
       if (used.indexOf(i) !== -1) {
