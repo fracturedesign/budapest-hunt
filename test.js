@@ -321,6 +321,19 @@ eq("out-of-order levels are still sorted correctly", L.stagLevelFor(90, outOfOrd
 eq("out-of-order levels: low percent still gets the bottom tier",
    L.stagLevelFor(10, outOfOrder).name, "Bottom");
 
+// --- home-page scoring explainer --------------------------------------------
+ok("has a built-in default explainer", L.DEFAULT_SCORING_EXPLAINER.length > 0);
+eq("no config → falls back to the default", L.resolveScoringExplainer({}), L.DEFAULT_SCORING_EXPLAINER);
+eq("empty array → falls back to the default",
+   L.resolveScoringExplainer({ scoringExplainer: [] }), L.DEFAULT_SCORING_EXPLAINER);
+const customExplainer = ["Custom line one.", "Custom line two."];
+eq("a real custom list is used as-is",
+   L.resolveScoringExplainer({ scoringExplainer: customExplainer }), customExplainer);
+ok("default explainer mentions the target time token",
+   L.DEFAULT_SCORING_EXPLAINER.some(line => line.includes("{target}")));
+ok("default explainer mentions the total points token",
+   L.DEFAULT_SCORING_EXPLAINER.some(line => line.includes("{totalPoints}")));
+
 // --- content.js's own scoring config ----------------------------------------
 if (L.isScoringEnabled(HUNT.config)) {
   const possible = L.totalPossiblePoints(HUNT.stops, HUNT.config);

@@ -1066,7 +1066,8 @@
     { title: "Card headings", note: "", keys: [
       ["travelEyebrow", "Above the travel clue"],
       ["puzzleEyebrow", "Above the puzzle"],
-      ["howToTitle",    "\"How this works\" heading"]
+      ["howToTitle",    "\"How this works\" heading"],
+      ["scoringExplainerTitle", "\"How scoring works\" heading (clear this to hide that whole card)"]
     ]},
     { title: "Progress & timing", note: "{n} = current stop, {total} = number of stops.", keys: [
       ["hudProgress",  "Progress counter"],
@@ -1284,6 +1285,18 @@
       "Total possible right now: " + possible + " pts across " + scoredCount + " of " +
       draft.stops.length + " stops. (" + (draft.stops.length - scoredCount) +
       " excluded — info stops by default, or anything you've switched off individually.)"
+    ));
+
+    main.appendChild(el("fieldset", { class: "fieldset" },
+      el("h3", { text: "Explain it on the home page" }),
+      el("p", { class: "fs-note", text:
+        "Shown in its own card on the start screen, separate from \"How this works\" above. " +
+        "{target} and {totalPoints} fill in automatically from this hunt's own numbers. " +
+        "Clear the title in Buttons & labels (scoringExplainerTitle) to hide the whole card instead." }),
+      listField("Bullets", function () { return draft.config.scoringExplainer || (draft.config.scoringExplainer = []); },
+                function (a) { draft.config.scoringExplainer = a; },
+                "Leave empty to use the built-in explanation.",
+                { multiline: true, addLabel: "+ Add bullet" })
     ));
 
     main.appendChild(renderStagLevelsField());

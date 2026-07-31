@@ -361,6 +361,29 @@
     return list[list.length - 1];
   }
 
+  /**
+   * Plain-language explanation of the points/STAG system for the start
+   * screen — separate from `howToPlay` above, which only covers the core
+   * clue → puzzle → answer loop. {target} and {totalPoints} are filled at
+   * render time from this hunt's actual config, so the copy can't drift out
+   * of sync with what it's describing.
+   */
+  var DEFAULT_SCORING_EXPLAINER = [
+    "There are {totalPoints} points up for grabs across this hunt.",
+    "Each stop has its own clock, starting the moment you arrive — not while you're still walking there.",
+    "Solve within the target time (default {target}) for full points; take longer and they decay down to a floor.",
+    "Every hint you reveal costs points too, on top of the extra minutes it adds.",
+    "Skipping a stop scores zero for it — the one outcome worse than just being slow.",
+    "Add it all up at the end and you're crowned with a STAG title, from Roadkill Stag to Legendary Stag."
+  ];
+
+  /** The bullet list to actually render: the hunt's own, or the default. */
+  function resolveScoringExplainer(config) {
+    return (config && config.scoringExplainer && config.scoringExplainer.length)
+      ? config.scoringExplainer
+      : DEFAULT_SCORING_EXPLAINER;
+  }
+
   /* ==========================================================================
    * LABELS — every visible bit of UI text, all overridable from content.js.
    *
@@ -374,6 +397,7 @@
     // start screen
     startKicker:      "",   // blank by default — the element hides itself when empty
     howToTitle:       "How this works",
+    scoringExplainerTitle: "🏆 How scoring works",
     startFootnote:    "Best on one phone, passed around. Close it, lose it, drop it — reopen the link and you're back where you were.",
     hintCostNote:     "Each hint you reveal adds {min} minutes to your final time. Skipping a stop entirely costs {skipMin}.",
     hintCostNoteFree: "Hints are free. Your honour is your own business.",
@@ -494,6 +518,8 @@
     totalPossiblePoints: totalPossiblePoints,
     totalEarnedPoints: totalEarnedPoints,
     stagLevelFor: stagLevelFor,
+    DEFAULT_SCORING_EXPLAINER: DEFAULT_SCORING_EXPLAINER,
+    resolveScoringExplainer: resolveScoringExplainer,
     DEFAULT_STAG_LEVELS: DEFAULT_STAG_LEVELS,
     freshState: freshState
   };
@@ -864,7 +890,37 @@
       ? t("hintCostNote", { min: C.hintPenaltyMinutes, skipMin: C.skipPenaltyMinutes })
       : t("hintCostNoteFree");
 
+    paintScoringExplainer();
+
     $("btnStart").textContent = C.startButtonLabel || "START";
+  }
+
+  /** The "🏆 How scoring works" card — explains the points/STAG system,
+   *  which is a distinct layer on top of the minute-penalty stuff above.
+   *  Setting the title label to "" hides the whole card, same convention
+   *  as startKicker. */
+  function paintScoringExplainer() {
+    var card = $("scoringExplainerCard");
+    if (!card) return;
+
+    var title = t("scoringExplainerTitle");
+    card.hidden = !title;
+    if (!title) return;
+    $("scoringExplainerTitle").textContent = title;
+
+    var globalScoring = resolveScoring(C, {});
+    var tokens = {
+      target: formatTime(globalScoring.targetSeconds * 1000),
+      totalPoints: totalPossiblePoints(STOPS, C)
+    };
+
+    var ul = $("scoringExplainerList");
+    ul.innerHTML = "";
+    resolveScoringExplainer(C).forEach(function (line) {
+      var li = document.createElement("li");
+      li.textContent = fillTokens(line, tokens);
+      ul.appendChild(li);
+    });
   }
 
   /** Set the small grey caption that sits before a .fact / .score value. */

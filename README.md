@@ -180,6 +180,16 @@ for the solved screen to see a penalty land), the hint button shows both its
 time and point cost, the solved screen shows a points badge, and the finish
 screen leads with a 🦌 STAG SCORE card before the regular scoreboard.
 
+**The start screen explains all of this up front**, in its own "🏆 How
+scoring works" card below the regular "How this works" one — so the group
+knows the points/STAG system exists before they hit the first stop, not just
+when they see a mysterious chip appear mid-puzzle. The wording pulls this
+hunt's actual target time and total possible points in automatically
+(`{target}` / `{totalPoints}`), so it can't quietly drift out of sync with
+the real numbers as you tune them. Write your own bullets in **Scoring &
+STAG levels → Explain it on the home page**, or clear
+`scoringExplainerTitle` in **Buttons & labels** to hide the card entirely.
+
 **Showing the clock and counting toward the score are two separate
 switches.** Each stop's "Scoring & timer" section has its own "Show a live
 timer" toggle, independent of "Include in scoring" — so you can put a
@@ -351,10 +361,11 @@ stop's `id` unique.
 node test.js
 ```
 
-367 checks covering answer normalisation, matching, task types, label tokens,
+248 checks covering answer normalisation, matching, task types, label tokens,
 the timer (including the independent show/hide toggle), penalty maths, the
-skip gate, the points/decay curve, STAG-level thresholds, photo-capture
-defaults, embedded-image sanity, and the structure of every stop in
+skip gate, the points/decay curve, STAG-level thresholds, the home-page
+scoring explainer, photo-capture defaults, embedded-image sanity, and the
+structure of every stop in
 `content.js`. It also prints which stops still contain unfilled placeholders.
 It won't tell you if a riddle is bad — that's what walking the route is for.
 
