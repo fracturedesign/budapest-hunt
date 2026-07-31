@@ -430,6 +430,25 @@ button, input { -webkit-tap-highlight-color: transparent; }
   text-align: center;
 }
 
+/* Hides the two file inputs WITHOUT display:none. iOS Safari has a known
+ * quirk where a synthetic .click() on a display:none <input type=file> can
+ * silently fail to open the native camera/photo picker at all — no error,
+ * no sheet, nothing happens. This keeps the element genuinely in the layout
+ * (0x0, clipped, transparent) so WebKit still honours the click. Do not
+ * switch these back to the `hidden` attribute. */
+.file-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
 /* ─────────────────────────────────────────────────────────── photo recap ── */
 
 .photo-recap {
