@@ -56,6 +56,9 @@ const HUNT = {
     ],
     "finalPhotoPrompt": "ONE LAST THING: everyone in the frame, arms around each other, Danil in the middle looking exactly as tired as he feels. Someone count to three out loud. This is the photo that ends up in the wedding slideshow, so make it count.",
     "finalToast": "",
+    "finalSelfie": {
+      "enabled": true
+    },
     "theme": {
       "accent": "#5ddb8a",
       "accentDark": "#3d9c60",

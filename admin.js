@@ -1030,6 +1030,24 @@
       imageField("Finish screen photo (optional)", function () { return c.finishImage; },
                  function (v) { c.finishImage = v; })
     ));
+
+    main.appendChild(el("fieldset", { class: "fieldset" },
+      el("h3", { text: "Final group selfie" }),
+      el("p", { class: "fs-note", text:
+        "A one-off screen after the last stop, before the results: everyone piles in for a group selfie. " +
+        "It isn't a stop — no timer, no points, not counted in \"Stop N of M\". The photo can't be skipped " +
+        "past, and it pairs side-by-side with the earliest photo taken elsewhere in the hunt on the finish " +
+        "screen. All the wording for it lives in Buttons & labels → Photo capture." }),
+      field("Selfie step", selectInput(String(HuntLogic.isFinalSelfieEnabled(draft.config)), [
+        { value: "true",  label: "On — ask for a group selfie before showing results" },
+        { value: "false", label: "Off" }
+      ], function (v) {
+        if (!draft.config.finalSelfie) draft.config.finalSelfie = {};
+        draft.config.finalSelfie.enabled = (v === "true");
+        touch();
+        renderEditor();
+      }))
+    ));
   }
 
   /* ---- buttons & labels ---------------------------------------------------- */
@@ -1094,7 +1112,14 @@
       ["pickPhotoButton",    "Link to attach an existing photo instead"],
       ["photoCaptureNote",   "Small print explaining where the photo goes"],
       ["photoRecapTitle",    "\"Photos from tonight\" heading on the finish screen"],
-      ["photoRecapNote",     "Small print under that recap grid"]
+      ["photoRecapNote",     "Small print under that recap grid"],
+      ["finalSelfieTitle",   "Heading on the final group-selfie screen"],
+      ["finalSelfiePrompt",  "Instructions on the final group-selfie screen"],
+      ["finalSelfiePhotoLabel", "Label above the selfie photo control"],
+      ["finalSelfieButton", "Button once the selfie is attached"],
+      ["thenNowTitle",       "\"Then & Now\" heading on the finish screen"],
+      ["thenNowFirstLabel",  "Caption under the earlier photo ({name})"],
+      ["thenNowSelfieLabel", "Caption under the final selfie"]
     ]},
     { title: "Start & finish screens", note: "", keys: [
       ["startKicker",    "Small line above the title (hidden unless you set one)"],

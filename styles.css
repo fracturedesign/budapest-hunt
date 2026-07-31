@@ -504,6 +504,47 @@ button, input { -webkit-tap-highlight-color: transparent; }
 
 .photo-recap .footnote { margin: 0; text-align: left; }
 
+/* ──────────────────────────────────────────────────────────── then & now ── */
+
+.then-now-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 20px;
+}
+
+.then-now-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+/* A lone image (no earlier stop photo to pair with) shouldn't stretch to
+ * fill a whole grid column's width — cap and centre it instead. */
+.then-now-grid:has(> :only-child) {
+  grid-template-columns: minmax(0, 220px);
+  justify-content: center;
+}
+
+.then-now-grid figure { margin: 0; }
+
+.then-now-grid img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  cursor: zoom-in;
+}
+
+.then-now-grid figcaption {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
 /* ────────────────────────────────────────────────────────── points badge ── */
 
 .points-badge {

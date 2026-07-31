@@ -243,6 +243,26 @@ and paying for a storage provider and giving this project real credentials —
 a bigger decision than editing content, so it's intentionally not done here
 without asking first.
 
+### Final group selfie
+
+An optional last step, off by default (a hand-written `content.js` from
+before this feature existed has no `config.finalSelfie` block, so nothing
+changes for it) — turn it on from **Game settings → Final group selfie**.
+
+When it's on, one extra screen appears right after the last stop, before the
+results: everyone piles in for a group selfie, using the exact same
+capture/fallback/save-to-Photos pipeline as a stop's photo control. It's
+deliberately **not** a stop — no timer, no points, not counted in "Stop N of
+M" — and the photo is required; there's no skipping past it (mirrors the
+per-stop required-photo gate, including the same keyboard-bypass guard).
+
+On the finish screen this pairs side-by-side with the **earliest** photo
+taken anywhere earlier in the hunt (first match in stop order) under a
+"🤳 Then & Now" heading — a quick before/after of the night. If no earlier
+photo exists to pair with, it just shows the selfie alone. All the wording
+(title, prompt, button, captions) lives in **Buttons & labels → Photo
+capture**, same as everything else photo-related.
+
 ### Customising wording
 
 **Buttons & labels** covers every fixed string in the game. Leave a box empty
@@ -361,10 +381,11 @@ stop's `id` unique.
 node test.js
 ```
 
-248 checks covering answer normalisation, matching, task types, label tokens,
+254 checks covering answer normalisation, matching, task types, label tokens,
 the timer (including the independent show/hide toggle), penalty maths, the
 skip gate, the points/decay curve, STAG-level thresholds, the home-page
-scoring explainer, photo-capture defaults, embedded-image sanity, and the
+scoring explainer, the final-selfie toggle, photo-capture defaults,
+embedded-image sanity, and the
 structure of every stop in
 `content.js`. It also prints which stops still contain unfilled placeholders.
 It won't tell you if a riddle is bad — that's what walking the route is for.

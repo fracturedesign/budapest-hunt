@@ -199,6 +199,16 @@
     return true;
   }
 
+  /**
+   * Is the final group-selfie step switched on? Off unless `config.finalSelfie`
+   * exists (mirrors how isScoringEnabled used to work, before it was
+   * hardcoded on) — a content.js written before this feature existed simply
+   * has no such block, so nothing new appears for it unasked.
+   */
+  function isFinalSelfieEnabled(config) {
+    return !!(config && config.finalSelfie && config.finalSelfie.enabled !== false);
+  }
+
   /** Does this stop count toward the score? An explicit `scored` flag wins;
    *  otherwise every type scores except "info" (a pure waypoint). */
   function isScoredStop(stop) {
@@ -469,6 +479,15 @@
     photoRecapTitle:  "📸 Photos from tonight",
     photoRecapNote:   "These live in this browser only, and they're the small preview copies — tap any one to open it, then long-press to add it to your Photos before you clear your browser data.",
 
+    // final selfie screen (only shown if config.finalSelfie is set up)
+    finalSelfieTitle:  "One last thing",
+    finalSelfiePrompt: "Get the whole group in frame — this is the one that ends up in the wedding slideshow.",
+    finalSelfiePhotoLabel: "📸 Group selfie",
+    finalSelfieButton: "CONTINUE TO RESULTS →",
+    thenNowTitle:      "🤳 Then & Now",
+    thenNowFirstLabel: "{name}",
+    thenNowSelfieLabel:"The group, at the end",
+
     // hud
     hudProgress:      "Stop {n} of {total}",
     hudFinished:      "Finished · {total} stops"
@@ -510,6 +529,7 @@
     penaltyMs: penaltyMs,
     elapsedMs: elapsedMs,
     isScoringEnabled: isScoringEnabled,
+    isFinalSelfieEnabled: isFinalSelfieEnabled,
     isScoredStop: isScoredStop,
     shouldShowTimer: shouldShowTimer,
     wantsPhotoCapture: wantsPhotoCapture,
@@ -657,6 +677,12 @@
   var PHOTOS_KEY = STORAGE_KEY + "-photos";
   var photos = loadPhotos();     // { stopId: "data:image/jpeg;base64,..." }
 
+  // Reserved key for the final-selfie screen's photo, in the same `photos`
+  // map as every stop's. No real stop can ever have this id — content.js
+  // ids come from user-typed slugs and this one starts with a double
+  // underscore specifically so it can't collide.
+  var FINAL_SELFIE_ID = "__finalSelfie";
+
   /**
    * The untouched File objects exactly as the camera handed them over, kept
    * in memory for this page-session only — never persisted, since a handful
@@ -790,7 +816,7 @@
   }
 
   function screens() {
-    return ["start", "travel", "puzzle", "solved", "finish"];
+    return ["start", "travel", "puzzle", "solved", "selfie", "finish"];
   }
 
   function show(name) {
@@ -798,7 +824,8 @@
       var el = $("screen-" + s);
       if (el) el.hidden = (s !== name);
     });
-    $("hud").hidden = (name === "start");
+    // No stop progress is relevant on the selfie screen — it isn't a stop.
+    $("hud").hidden = (name === "start" || name === "selfie");
     window.scrollTo(0, 0);
   }
 
@@ -1391,15 +1418,59 @@
 
   function advance() {
     if (state.stopIndex >= STOPS.length - 1) {
-      state.finishedAt = Date.now();
-      save();
-      if (timerHandle) clearInterval(timerHandle);
-      if (wakeLock) { try { wakeLock.release(); } catch (e) {} }
-      goFinish();
+      // The selfie screen (if switched on) sits between the last stop and
+      // the finish screen — it isn't a stop itself, so it doesn't touch
+      // stopIndex, just state.view.
+      if (isFinalSelfieEnabled(C)) { goSelfie(); return; }
+      finishGame();
       return;
     }
     state.stopIndex += 1;
     goTravel();
+  }
+
+  /** Stop the clocks and show the results. The one and only way the run
+   *  actually ends, whether or not a selfie screen came first. */
+  function finishGame() {
+    state.finishedAt = Date.now();
+    save();
+    if (timerHandle) clearInterval(timerHandle);
+    if (wakeLock) { try { wakeLock.release(); } catch (e) {} }
+    goFinish();
+  }
+
+  function goSelfie() {
+    state.view = "selfie"; save();
+    paintSelfieScreen();
+    show("selfie");
+  }
+
+  /** The one-off "take a group selfie" screen. Reuses downscalePhoto/
+   *  photos/savePhotos/saveToPhotos exactly like a stop's photo capture
+   *  does, under the reserved key FINAL_SELFIE_ID so it can never collide
+   *  with a real stop id. */
+  function paintSelfieScreen() {
+    $("selfieTitle").textContent = t("finalSelfieTitle");
+    $("selfiePrompt").textContent = t("finalSelfiePrompt");
+    $("selfiePhotoCaptureLabel").textContent = t("finalSelfiePhotoLabel");
+    $("selfiePhotoCaptureNote").textContent = t("photoCaptureNote");
+    $("btnTakeSelfie").textContent = t("takePhotoButton");
+    $("btnRetakeSelfie").textContent = t("retakePhotoButton");
+    $("btnPickSelfie").textContent = t("pickPhotoButton");
+    $("btnSaveSelfie").textContent = t("savePhotoButton");
+
+    var uri = photos[FINAL_SELFIE_ID];
+    $("selfiePhotoCaptureEmpty").hidden = !!uri;
+    $("selfiePhotoCapturePreview").hidden = !uri;
+    if (uri) $("selfiePhotoCaptureImg").src = uri;
+
+    var locked = !uri;
+    var btn = $("btnSelfieContinue");
+    btn.disabled = locked;
+    btn.classList.toggle("btn-locked", locked);
+    btn.textContent = t("finalSelfieButton");
+    $("selfieGateNote").textContent = t("photoRequiredNote");
+    $("selfieGateNote").hidden = !locked;
   }
 
   /* ==========================================================================
@@ -1430,6 +1501,7 @@
 
     paintFigure("finish", C.finishImage);
     paintStagCard();
+    paintThenNow();
     paintPhotoRecap();
 
     var blurb = $("finishBlurb");
@@ -1456,6 +1528,51 @@
     });
 
     paintHud();
+  }
+
+  /**
+   * The "🤳 Then & Now" comparison: the final selfie paired with the
+   * earliest photo taken during the hunt (first match in stop order).
+   * Hidden entirely if no selfie was taken (screen switched off, or a group
+   * that closed the tab before reaching it — resuming lands them on the
+   * selfie screen itself, not skips past it). Degrades to just the selfie
+   * alone if no stop photo exists to pair it with.
+   */
+  function paintThenNow() {
+    var card = $("thenNowCard");
+    if (!card) return;
+
+    var selfieUri = photos[FINAL_SELFIE_ID];
+    if (!selfieUri) { card.hidden = true; return; }
+
+    var firstStop = null;
+    for (var i = 0; i < STOPS.length; i++) {
+      if (photos[STOPS[i].id]) { firstStop = STOPS[i]; break; }
+    }
+
+    card.hidden = false;
+    $("thenNowTitle").textContent = t("thenNowTitle");
+
+    var grid = $("thenNowGrid");
+    grid.innerHTML = "";
+    if (firstStop) {
+      grid.appendChild(thenNowFigure(photos[firstStop.id],
+        t("thenNowFirstLabel", { name: firstStop.name || firstStop.id })));
+    }
+    grid.appendChild(thenNowFigure(selfieUri, t("thenNowSelfieLabel")));
+  }
+
+  function thenNowFigure(uri, caption) {
+    var fig = document.createElement("figure");
+    var img = document.createElement("img");
+    img.src = uri;
+    img.alt = caption;
+    img.addEventListener("click", function () { openLightbox(this.src); });
+    var figcap = document.createElement("figcaption");
+    figcap.textContent = caption;
+    fig.appendChild(img);
+    fig.appendChild(figcap);
+    return fig;
   }
 
   /** The "📸 Photos from tonight" strip — only the stops that actually got one. */
@@ -1540,7 +1657,8 @@
     $("lightboxImage").removeAttribute("src");
   }
 
-  ["travelImage", "puzzleImage", "successImage", "startImage", "finishImage", "photoCaptureImg"]
+  ["travelImage", "puzzleImage", "successImage", "startImage", "finishImage",
+   "photoCaptureImg", "selfiePhotoCaptureImg"]
     .forEach(function (id) {
       $(id).addEventListener("click", function () { openLightbox(this.src); });
     });
@@ -1605,6 +1723,47 @@
   $("photoCaptureInput").addEventListener("change", handlePickedPhoto);
   $("photoPickInput").addEventListener("change", handlePickedPhoto);
 
+  /* ---- final selfie screen ---------------------------------------------
+   * Same pipeline as the per-stop photo capture above, just pointed at
+   * FINAL_SELFIE_ID instead of a stop id, and its own set of element ids so
+   * neither screen can interfere with the other's DOM. */
+
+  $("btnTakeSelfie").addEventListener("click", function () { $("selfiePhotoCaptureInput").click(); });
+  $("btnRetakeSelfie").addEventListener("click", function () { $("selfiePhotoCaptureInput").click(); });
+  $("btnPickSelfie").addEventListener("click", function () { $("selfiePhotoPickInput").click(); });
+  $("btnSaveSelfie").addEventListener("click", function () {
+    saveToPhotos({ id: FINAL_SELFIE_ID, name: "group selfie" });
+  });
+
+  function handlePickedSelfie() {
+    var file = this.files && this.files[0];
+    this.value = "";
+    if (!file) return;
+
+    originalPhotoFiles[FINAL_SELFIE_ID] = file;
+    downscalePhoto(file).then(function (dataUri) {
+      photos[FINAL_SELFIE_ID] = dataUri;
+      var ok = savePhotos();
+      paintSelfieScreen();
+      if (!ok) {
+        setFeedback("Photo attached, but this browser is out of storage space to " +
+                     "keep a copy. Save it to your Photos now so it isn't lost.", "bad");
+      }
+    }).catch(function (err) {
+      alert("Couldn't use that photo: " + err.message);
+    });
+  }
+
+  $("selfiePhotoCaptureInput").addEventListener("change", handlePickedSelfie);
+  $("selfiePhotoPickInput").addEventListener("change", handlePickedSelfie);
+
+  $("btnSelfieContinue").addEventListener("click", function () {
+    // Hard gate, not just the disabled button — mirrors submitValue()'s
+    // guard on a stop's required photo.
+    if (!photos[FINAL_SELFIE_ID]) return;
+    finishGame();
+  });
+
   $("btnReset").addEventListener("click", function () {
     if (!confirm("Wipe everything and start a fresh hunt?")) return;
     try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(PHOTOS_KEY); } catch (e) {}
@@ -1621,6 +1780,7 @@
     if (state.startedAt == null) { goStart(); return; }
     startTimerLoop();
     if (state.view === "solved") { goSolved(false); return; }
+    if (state.view === "selfie") { goSelfie(); return; }
     if (state.view === "puzzle") { goPuzzle(); return; }
     goTravel();
   }

@@ -162,6 +162,16 @@ Object.keys(HUNT.config.labels || {}).forEach(k => {
      Object.prototype.hasOwnProperty.call(L.DEFAULT_LABELS, k));
 });
 
+/* ═══════════════════════════════════════════ 3c2. FINAL SELFIE ══ */
+section("3c2. Final group selfie");
+
+ok("off with no config at all",              !L.isFinalSelfieEnabled());
+ok("off with an empty config",               !L.isFinalSelfieEnabled({}));
+ok("off when the block is missing entirely", !L.isFinalSelfieEnabled({ notThis: true }));
+ok("on when the block is present",            L.isFinalSelfieEnabled({ finalSelfie: {} }));
+ok("on when explicitly enabled",              L.isFinalSelfieEnabled({ finalSelfie: { enabled: true } }));
+ok("off when explicitly disabled",           !L.isFinalSelfieEnabled({ finalSelfie: { enabled: false } }));
+
 /* ═══════════════════════════════════════ 3d. POINTS & STAG LEVELS ══ */
 section("3d. Points, per-stop timer & STAG levels");
 

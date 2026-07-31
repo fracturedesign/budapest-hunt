@@ -225,6 +225,47 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: FINAL SELFIE
+       Appears once, after the last stop, before the finish screen — only
+       when config.finalSelfie is set up (see isFinalSelfieEnabled in
+       app.js). Deliberately NOT a stop: no travel clue, no timer, no
+       scoring, not counted in "Stop N of M". Reuses the same photo
+       pipeline as a stop's photo-capture block (downscalePhoto/photos/
+       saveToPhotos), just under its own element ids and its own reserved
+       photos[] key ("__finalSelfie") so it can never collide with a real
+       stop id. See paintSelfieScreen() / goSelfie() in app.js.
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen screen-center" id="screen-selfie" hidden>
+    <div class="big-tick">🤳</div>
+    <h2 class="solved-title" id="selfieTitle">One last thing</h2>
+    <div class="card">
+      <div class="prose" id="selfiePrompt"></div>
+    </div>
+
+    <div class="photo-capture" id="selfiePhotoCapture">
+      <div class="answer-label" id="selfiePhotoCaptureLabel">📸 Group selfie</div>
+      <div class="photo-capture-box" id="selfiePhotoCaptureEmpty">
+        <button class="btn btn-ghost btn-photo" id="btnTakeSelfie" type="button">📸 Take a photo</button>
+      </div>
+      <figure class="photo-capture-preview" id="selfiePhotoCapturePreview" hidden>
+        <img id="selfiePhotoCaptureImg" alt="The group's final selfie">
+        <button class="btn btn-primary btn-small" id="btnSaveSelfie" type="button">⬇️ Save to my Photos</button>
+        <button class="btn btn-ghost btn-small" id="btnRetakeSelfie" type="button">↺ Retake</button>
+      </figure>
+      <button class="btn btn-ghost btn-small btn-photo-fallback" id="btnPickSelfie" type="button">
+        Or choose one from your photos
+      </button>
+      <input type="file" id="selfiePhotoCaptureInput" class="file-input-hidden" accept="image/*" capture="environment">
+      <input type="file" id="selfiePhotoPickInput" class="file-input-hidden" accept="image/*">
+      <p class="footnote" id="selfiePhotoCaptureNote"></p>
+    </div>
+
+    <p class="photo-gate-note" id="selfieGateNote" hidden></p>
+
+    <button class="btn btn-primary btn-huge" id="btnSelfieContinue">CONTINUE TO RESULTS →</button>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
        SCREEN: FINISH
        ═════════════════════════════════════════════════════════════ -->
   <section class="screen" id="screen-finish" hidden>
@@ -245,6 +286,15 @@
       <div class="stag-points" id="stagPointsValue"></div>
       <div class="stag-bar"><div class="stag-bar-fill" id="stagBarFill"></div></div>
       <p class="stag-blurb" id="stagBlurb"></p>
+    </div>
+
+    <!-- The final selfie, paired with the earliest photo taken during the
+         hunt. Only shown when a final selfie was actually taken; pairs with
+         the first stop (in play order) that has a photo, or stands alone if
+         no earlier photo exists. See paintThenNow() in app.js. -->
+    <div class="then-now-card" id="thenNowCard" hidden>
+      <div class="card-eyebrow" id="thenNowTitle">🤳 Then &amp; Now</div>
+      <div class="then-now-grid" id="thenNowGrid"></div>
     </div>
 
     <!-- Only the photo-capture stops that actually got one appear here. -->
