@@ -134,6 +134,12 @@ ok("choice is not a placeholder", !L.isPlaceholderStop(choice));
 ok("choice with no answers is a placeholder",
    L.isPlaceholderStop({ id: "c2", type: "choice", choices: ["a", "b"] }));
 
+section("3b2. On-site puzzles (no travel clue)");
+
+ok("stop has a travel clue by default",   L.hasTravelClue({}));
+ok("stop has a travel clue if skipTravel is false", L.hasTravelClue({ skipTravel: false }));
+ok("skipTravel:true removes the travel clue", !L.hasTravelClue({ skipTravel: true }));
+
 /* ═══════════════════════════════════════════════════ 3c. LABELS ══ */
 section("3c. Labels & tokens");
 

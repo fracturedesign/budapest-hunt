@@ -171,7 +171,11 @@
     if (!stop.id || !stop.id.trim()) out.push({ level: "red", text: "No id." });
     var dupes = draft.stops.filter(function (s, i) { return i !== index && s.id === stop.id; });
     if (dupes.length) out.push({ level: "red", text: 'Duplicate id "' + stop.id + '" — ids must be unique.' });
-    if (!stop.travelClue || stop.travelClue.trim().length < 10) out.push({ level: "red", text: "Travel clue is empty or very short." });
+    if (!HuntLogic.hasTravelClue(stop)) {
+      // On-site puzzle — no walk, no clue to write.
+    } else if (!stop.travelClue || stop.travelClue.trim().length < 10) {
+      out.push({ level: "red", text: "Travel clue is empty or very short." });
+    }
     if (!stop.puzzle || stop.puzzle.trim().length < 10) out.push({ level: "red", text: "Puzzle text is empty or very short." });
 
     if (needsAnswer) {
@@ -760,18 +764,31 @@
     main.appendChild(renderStopScoring(stop));
 
     // ---- travel clue
-    main.appendChild(el("fieldset", { class: "fieldset" },
+    var travels = HuntLogic.hasTravelClue(stop);
+    var fsTravel = el("fieldset", { class: "fieldset" },
       el("h3", { text: "1. Travel clue" }),
-      el("p", { class: "fs-note", text: "The cryptic directions that get them walking. Blank lines become paragraph breaks." }),
-      field("Clue text", textArea(stop.travelClue, set("travelClue"), { tall: true })),
-      imageField("Photo (optional)", function () { return stop.travelImage; },
-                 function (v) { stop.travelImage = v; }),
-      field("Arrival note", textInput(stop.arrivalNote, set("arrivalNote")),
-            "Small italic line at the top of the puzzle screen. Optional flavour, e.g. \"Phones out for this one.\""),
-      field("\"We're here\" button text", textInput(stop.arrivedButton, set("arrivedButton"),
+      field("Does this stop need a travel clue?", selectInput(String(travels), [
+        { value: "true",  label: "Yes — the group has to walk/find somewhere first" },
+        { value: "false", label: "No — solved right where they already are (skip this screen)" }
+      ], function (v) {
+        stop.skipTravel = (v === "false");
+        touch();
+        renderEditor();
+      }), travels
+        ? "The cryptic directions that get them walking. Blank lines become paragraph breaks."
+        : "The group goes straight from the previous stop's finish screen into this puzzle — no clue, no \"We're here\" button.")
+    );
+    if (travels) {
+      fsTravel.appendChild(field("Clue text", textArea(stop.travelClue, set("travelClue"), { tall: true })));
+      fsTravel.appendChild(imageField("Photo (optional)", function () { return stop.travelImage; },
+                 function (v) { stop.travelImage = v; }));
+      fsTravel.appendChild(field("\"We're here\" button text", textInput(stop.arrivedButton, set("arrivedButton"),
             draft.config.labels && draft.config.labels.arrivedButton || "WE'RE HERE →"),
-            "Leave blank to use the game-wide default.")
-    ));
+            "Leave blank to use the game-wide default."));
+    }
+    fsTravel.appendChild(field("Arrival note", textInput(stop.arrivalNote, set("arrivalNote")),
+            "Small italic line at the top of the puzzle screen. Optional flavour, e.g. \"Phones out for this one.\""));
+    main.appendChild(fsTravel);
 
     // ---- puzzle
     main.appendChild(el("fieldset", { class: "fieldset" },

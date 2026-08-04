@@ -106,7 +106,7 @@ with a stray comma.
 
 | | |
 |---|---|
-| **Edit any stop** | Name, teaser, travel clue, arrival note, puzzle text, hints, accepted answers, success message |
+| **Edit any stop** | Name, teaser, travel clue (optional — can be skipped for on-site puzzles), arrival note, puzzle text, hints, accepted answers, success message |
 | **Choose a task type** | Text answer, multiple choice, dare, or info-only — see below |
 | **Add / delete / duplicate stops** | `+ Add` in the sidebar, or the `⧉` and `✕` buttons on each row |
 | **Reorder** | `↑` `↓` on each stop. Numbering, the progress bar and "Stop N of M" all follow automatically |

@@ -74,6 +74,12 @@
     return type === "text" || type === "choice";
   }
 
+  /** Some puzzles are solved right where the group already is — no walk,
+   *  no travel screen. Set on the stop by the editor's "On-site" toggle. */
+  function hasTravelClue(stop) {
+    return !(stop && stop.skipTravel);
+  }
+
   /**
    * The answers that could actually ever match something.
    *
@@ -518,6 +524,7 @@
     usableAnswers: usableAnswers,
     stopType: stopType,
     typeNeedsAnswer: typeNeedsAnswer,
+    hasTravelClue: hasTravelClue,
     TASK_TYPES: TASK_TYPES,
     DEFAULT_LABELS: DEFAULT_LABELS,
     resolveLabels: resolveLabels,
@@ -1020,6 +1027,7 @@
     $("puzzleEyebrow").textContent = stop.puzzleEyebrow || t("puzzleEyebrow");
     $("puzzleText").textContent = stop.puzzle || "";
     $("btnBackToClue").textContent = t("backToClue");
+    $("btnBackToClue").hidden = !hasTravelClue(stop);
     paintFigure("puzzle", stop.puzzleImage);
 
     $("placeholderBadge").textContent = t("placeholderBadge");
@@ -1361,6 +1369,8 @@
   function goStart() { state.view = "start"; paintStart(); show("start"); }
 
   function goTravel() {
+    // On-site puzzles skip the travel screen entirely — nothing to walk to.
+    if (!hasTravelClue(currentStop())) { goPuzzle(); return; }
     state.view = "travel"; save(); requestWakeLock();
     paintTravel(); show("travel");
   }
