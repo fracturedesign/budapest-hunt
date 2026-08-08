@@ -446,7 +446,7 @@
     backToClue:       "← re-read the travel clue",
     emptyAnswer:      "Type something first.",
     placeholderBadge: "⚠️ Placeholder stop — the real answer hasn't been written yet, so anything you type will be accepted.",
-    taskTimerTarget:  "🎯 target {target}",
+    taskTimerTarget:  "🎯 target < {target}",
     taskPoints:       "🏆 {points}/{possible}",
     photoCaptureLabel: "📸 Photo proof",
     takePhotoButton:   "📸 Take a photo",
@@ -1513,8 +1513,6 @@
 
     var blurb = $("finishBlurb");
     blurb.textContent = (C.finishBlurb || []).join("\n\n");
-    $("finalPhotoPrompt").textContent = C.finalPhotoPrompt || "";
-    $("finalToast").textContent = C.finalToast || "";
     $("recapSummary").textContent = t("recapSummary");
     $("btnReset").textContent = t("resetButton");
 

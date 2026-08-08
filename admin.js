@@ -1042,8 +1042,6 @@
       listField("Closing blurb", function () { return c.finishBlurb || (c.finishBlurb = []); },
                 function (a) { c.finishBlurb = a; }, "One paragraph per line.",
                 { multiline: true, addLabel: "+ Add paragraph" }),
-      field("Final photo prompt", textArea(c.finalPhotoPrompt, set("finalPhotoPrompt"))),
-      field("Final toast", textArea(c.finalToast, set("finalToast"))),
       imageField("Finish screen photo (optional)", function () { return c.finishImage; },
                  function (v) { c.finishImage = v; })
     ));

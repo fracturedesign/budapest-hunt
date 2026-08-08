@@ -511,7 +511,7 @@ ok("whole game is under 3 MB (" + totalKb + " KB)", totalKb <= 3072,
 const required = ["groomName", "title", "estimatedDuration", "howToPlay",
                   "hintPenaltyMinutes", "skipPenaltyMinutes", "skipAfterWrongAnswers",
                   "wrongAnswerMessages", "correctAnswerMessages",
-                  "finishTitle", "finalPhotoPrompt"];
+                  "finishTitle"];
 required.forEach(k => ok("config." + k + " is set", HUNT.config[k] !== undefined));
 ok("wrongAnswerMessages is non-empty", HUNT.config.wrongAnswerMessages.length > 0);
 ok("correctAnswerMessages is non-empty", HUNT.config.correctAnswerMessages.length > 0);

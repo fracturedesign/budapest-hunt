@@ -52,8 +52,6 @@ const HUNT = {
       "You've done it Danil! You were dragged across half of Budapest and somehow nobody got lost, arrested or engaged to a stranger.",
       "That's a successful evening by any reasonable standard!"
     ],
-    "finalPhotoPrompt": "",
-    "finalToast": "",
     "theme": {
       "accent": "#5ddb8a",
       "accentDark": "#3d9c60",

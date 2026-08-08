@@ -205,7 +205,6 @@ button, input { -webkit-tap-highlight-color: transparent; }
 
 .card-clue  { border-color: #4a3f2c; background: #1f1a12; }
 .card-success { border-color: #2f4d38; background: #16251b; }
-.card-photo { border-color: #4a3f2c; background: #1f1a12; }
 
 .card-eyebrow {
   font-size: 12px;
@@ -227,7 +226,6 @@ button, input { -webkit-tap-highlight-color: transparent; }
 }
 
 .prose + .prose { margin-top: 14px; }
-.prose-toast { color: var(--gold); font-weight: 600; }
 
 .howto {
   margin: 0;
