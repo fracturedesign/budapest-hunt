@@ -205,6 +205,7 @@ button, input { -webkit-tap-highlight-color: transparent; }
 
 .card-clue  { border-color: #4a3f2c; background: #1f1a12; }
 .card-success { border-color: #2f4d38; background: #16251b; }
+.card-failure { border-color: #5c2f2b; background: #251615; }
 
 .card-eyebrow {
   font-size: 12px;
@@ -784,6 +785,7 @@ button, input { -webkit-tap-highlight-color: transparent; }
 
 .big-tick { font-size: 64px; line-height: 1; margin: 26px 0 12px; }
 .solved-title { margin: 0 0 20px; font-size: 28px; font-weight: 900; }
+.failed-title { color: var(--red); }
 #screen-solved .prose { text-align: left; }
 
 /* ───────────────────────────────────────────────────────────── stag card ── */

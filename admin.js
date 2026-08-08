@@ -196,13 +196,16 @@
       });
     }
 
-    if (type === "choice") {
+    if (type === "choice" || type === "onetry") {
       var choices = (stop.choices || []).filter(function (c) { return String(c).trim(); });
+      var kindLabel = type === "onetry" ? "One-try choice" : "Multiple choice";
       if (choices.length < 2) {
-        out.push({ level: "red", text: "Multiple choice needs at least two options." });
+        out.push({ level: "red", text: kindLabel + " needs at least two options." });
       }
       // The correct answer has to actually be one of the buttons, or the stop
-      // is unwinnable — the classic way to break a choice question.
+      // is unwinnable — the classic way to break a choice question. Doubly
+      // important for "onetry": an unwinnable stop there fails EVERY group,
+      // every time, with no way to notice until the event.
       if (choices.length && !isPlaceholder(stop)) {
         var reachable = choices.some(function (c) { return HuntLogic.checkAnswer(stop, c).ok; });
         if (!reachable) {
@@ -729,7 +732,8 @@
       choice: "Players tap one of several options. Good when the answer is hard to spell, or for an \"odd one out\".",
       dare:   "Nothing to answer — one button confirms they did the thing. Can't be failed, so no hints penalty trap and no give-up button.",
       info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues.",
-      picker: "Players tap one of several options to pick which task comes next, jumping straight to it by id. Not a quiz — there's no right answer, just a path. Whichever options they didn't pick are excluded from the rest of this playthrough entirely."
+      picker: "Players tap one of several options to pick which task comes next, jumping straight to it by id. Not a quiz — there's no right answer, just a path. Whichever options they didn't pick are excluded from the rest of this playthrough entirely.",
+      onetry: "Multiple choice with no retry: get it wrong and it's an outright fail, straight to its own failure screen — no shake-and-try-again, no hints escape hatch. Right on the first tap works exactly like a normal Multiple choice stop."
     };
     main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "Task type" }),
@@ -738,10 +742,11 @@
         { value: "choice", label: "Multiple choice — tap an option" },
         { value: "dare",   label: "Dare / photo — tap to confirm done" },
         { value: "info",   label: "Info only — no challenge" },
-        { value: "picker", label: "Picker — choose which task comes next" }
+        { value: "picker", label: "Picker — choose which task comes next" },
+        { value: "onetry", label: "One-try choice — wrong tap fails outright" }
       ], function (v) {
         stop.type = v;
-        if (v === "choice" && !stop.choices) stop.choices = ["", "", ""];
+        if ((v === "choice" || v === "onetry") && !stop.choices) stop.choices = ["", "", ""];
         if (v === "picker" && !stop.pickerOptions) {
           stop.pickerOptions = [{ label: "", description: "", color: "", animated: false, targetStopId: "" },
                                  { label: "", description: "", color: "", animated: false, targetStopId: "" }];
@@ -859,15 +864,21 @@
     var type = HuntLogic.stopType(stop);
     var answersBox = el("fieldset", { class: "fieldset" });
 
-    if (type === "text" || type === "choice") {
+    var isChoiceLike = type === "text" || type === "choice" || type === "onetry";
+
+    if (isChoiceLike) {
       var placeholderNote = isPlaceholder(stop)
         ? "⚠️ No real answers yet, so this stop accepts anything and shows an amber banner in the game. Add one below to make it a real puzzle."
         : "Matching already ignores capitals, accents (sör = sor), punctuation and extra spaces — you don't need to list those variants.";
 
       answersBox.appendChild(el("h3", { text: "4. Accepted answers" }));
       answersBox.appendChild(el("p", { class: "fs-note", text: placeholderNote }));
+      if (type === "onetry") {
+        answersBox.appendChild(el("div", { class: "warnbox info" },
+          "One try only — a wrong tap here skips straight to the failure screen below, no shake-and-retry."));
+      }
 
-      if (type === "choice") {
+      if (type === "choice" || type === "onetry") {
         answersBox.appendChild(listField("Options shown as buttons",
           function () { return stop.choices || (stop.choices = []); },
           function (a) { stop.choices = a; },
@@ -878,14 +889,14 @@
       answersBox.appendChild(listField("Answers",
         function () { return stop.answers || (stop.answers = []); },
         function (a) { stop.answers = a; },
-        type === "choice"
+        (type === "choice" || type === "onetry")
           ? "Must match one of the options above (matching is forgiving about case and accents)."
           : "Any one of these unlocks the next clue.",
         { addLabel: "+ Add accepted answer", placeholder: "e.g. tongue",
           emptyText: "No answers — this stop will accept anything." }));
 
       answersBox.appendChild(field(
-        type === "choice" ? "\"Pick one\" label" : "Answer box label",
+        (type === "choice" || type === "onetry") ? "\"Pick one\" label" : "Answer box label",
         textInput(stop.answerLabel, set("answerLabel")), "Optional override."));
 
       if (type === "text") {
@@ -894,6 +905,9 @@
         answersBox.appendChild(field("Submit button text",
           textInput(stop.submitButton, set("submitButton")), "Leave blank for the game-wide default."));
       }
+    } else if (type === "picker") {
+      // Picker's options (with their own targets) are edited in their own
+      // fieldset above, right after Task type — nothing to show here.
     } else {
       answersBox.appendChild(el("h3", { text: "4. Confirmation" }));
       answersBox.appendChild(el("p", { class: "fs-note", text:
@@ -907,23 +921,46 @@
 
     main.appendChild(answersBox);
 
-    // ---- success screen
-    main.appendChild(el("fieldset", { class: "fieldset" },
-      el("h3", { text: "5. Success screen" }),
-      el("p", { class: "fs-note", text: "What they see straight after getting it right." }),
-      field("Success message", textArea(stop.successMessage, set("successMessage"))),
-      imageField("Success photo (optional)", function () { return stop.successImage; },
-                 function (v) { stop.successImage = v; },
-                 "A reward image — an old photo of the groom, a meme, the answer revealed. Only shown when they actually solve it, never when they skip."),
-      el("div", { class: "row2" },
-        field("Big emoji", textInput(stop.solvedTick, set("solvedTick")),
-              "Default ✅. Try 🍺 or 🏆."),
-        field("Headline override", textInput(stop.solvedTitle, set("solvedTitle")),
-              "Blank = a random one of the game-wide \"correct!\" messages.")
-      ),
-      field("\"Next\" button text", textInput(stop.nextButton, set("nextButton")),
-            "Leave blank for the game-wide default.")
-    ));
+    // ---- success screen (picker never shows one — it jumps straight to the
+    // chosen option's target stop, no "correct!" interstitial at all)
+    if (type !== "picker") {
+      main.appendChild(el("fieldset", { class: "fieldset" },
+        el("h3", { text: "5. Success screen" }),
+        el("p", { class: "fs-note", text: "What they see straight after getting it right." }),
+        field("Success message", textArea(stop.successMessage, set("successMessage"))),
+        imageField("Success photo (optional)", function () { return stop.successImage; },
+                   function (v) { stop.successImage = v; },
+                   "A reward image — an old photo of the groom, a meme, the answer revealed. Only shown when they actually solve it, never when they skip."),
+        el("div", { class: "row2" },
+          field("Big emoji", textInput(stop.solvedTick, set("solvedTick")),
+                "Default ✅. Try 🍺 or 🏆."),
+          field("Headline override", textInput(stop.solvedTitle, set("solvedTitle")),
+                "Blank = a random one of the game-wide \"correct!\" messages.")
+        ),
+        field("\"Next\" button text", textInput(stop.nextButton, set("nextButton")),
+              "Leave blank for the game-wide default.")
+      ));
+    }
+
+    // ---- failure screen (only "onetry" can ever land here)
+    if (type === "onetry") {
+      main.appendChild(el("fieldset", { class: "fieldset" },
+        el("h3", { text: "6. Failure screen" }),
+        el("p", { class: "fs-note", text: "What they see the instant a wrong tap fails this stop outright." }),
+        field("Failure message", textArea(stop.failureMessage, set("failureMessage"))),
+        imageField("Failure photo (optional)", function () { return stop.failureImage; },
+                   function (v) { stop.failureImage = v; },
+                   "A gag image for the fail — a \"game over\" meme, whatever fits. Only shown on the failure screen, never anywhere else."),
+        el("div", { class: "row2" },
+          field("Big emoji", textInput(stop.failTick, set("failTick")),
+                "Default 💀."),
+          field("Headline override", textInput(stop.failureTitle, set("failureTitle")),
+                "Default \"Nope. That was your one shot.\"")
+        ),
+        field("\"Next\" button text", textInput(stop.nextButton, set("nextButton")),
+              "Leave blank for the game-wide default. Shared with the success screen's \"Next\" button above — there's only one stop to move on from either way.")
+      ));
+    }
 
     // ---- organiser notes
     main.appendChild(el("fieldset", { class: "fieldset" },
@@ -1143,6 +1180,7 @@
       ["answerLabel",       "Label above the answer box"],
       ["answerPlaceholder", "Greyed-out text inside the box"],
       ["choiceLabel",       "Label above multiple-choice options"],
+      ["onetryLabel",       "Label above a one-try choice stop's options"],
       ["pickerLabel",       "Label above a \"choose your path\" picker stop's options"],
       ["emptyAnswer",       "Nag when they submit nothing"],
       ["placeholderBadge",  "Banner on a stop with no real answer yet"]
@@ -1165,6 +1203,12 @@
       ["skippedMessage", "Message when they gave up"],
       ["solvedPoints",        "Points earned ({earned}, {possible})"],
       ["solvedPointsSkipped", "Points shown after a skip ({possible})"]
+    ]},
+    { title: "Failure screen", note: "Only reachable from a one-try choice stop's wrong first guess.", keys: [
+      ["failTick",            "Big emoji"],
+      ["failureTitle",        "Default headline (each stop can override its own)"],
+      ["solvedPointsFailed",  "Points shown after a fail ({possible})"],
+      ["recapFailed",         "Suffix on a failed stop in the route recap"]
     ]},
     { title: "Photo capture", note: "Shown on any stop with photo capture turned on (see that stop's own \"Photo capture\" section).", keys: [
       ["photoCaptureLabel",  "Heading above the photo control"],

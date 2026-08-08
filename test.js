@@ -166,6 +166,44 @@ eq("effectiveStops drops the excluded one", effective.length, 3);
 ok("effectiveStops keeps the chosen path",
    effective.some(s => s.id === "path-a") && !effective.some(s => s.id === "path-b"));
 
+section("3b4. One-try choice (wrong first tap fails outright)");
+
+eq("onetry recognised as a type", L.stopType({ type: "onetry" }), "onetry");
+ok("onetry needs an answer, same as choice", L.typeNeedsAnswer("onetry"));
+ok("onetry is not a placeholder once it has a real answer",
+   !L.isPlaceholderStop({ id: "ot1", type: "onetry", choices: ["A", "B"], answers: ["A"] }));
+ok("onetry with no real answers is a placeholder",
+   L.isPlaceholderStop({ id: "ot2", type: "onetry", choices: ["A", "B"] }));
+
+const onetryStop = { id: "ot3", type: "onetry", choices: ["Red", "Blue"], answers: ["Blue"] };
+ok("onetry matches its correct option", L.checkAnswer(onetryStop, "Blue").ok);
+ok("onetry rejects the wrong option",  !L.checkAnswer(onetryStop, "Red").ok);
+
+// --- stopPointsEarned treats a failed onetry stop like a skip: always 0 ---
+const failCfg = { scoring: { targetSeconds: 100, basePoints: 100, minPoints: 20, decayWindowSeconds: 100 } };
+const scoredOnetry = { id: "ot4", type: "onetry" };
+
+const failState = L.freshState();
+eq("not yet failed or solved is not reached",
+   L.stopPointsEarned(scoredOnetry, failState, failCfg).reached, false);
+
+failState.failed = ["ot4"];
+failState.puzzleElapsedMs = { ot4: 0 };            // instant "solve" time, doesn't matter — it failed
+const failSummary = L.stopPointsEarned(scoredOnetry, failState, failCfg);
+ok("failed stop is reached (resolved, just badly)", failSummary.reached);
+ok("failed stop is flagged failed",  failSummary.failed);
+ok("failed stop is not flagged skipped", !failSummary.skipped);
+eq("failed stop earns 0 regardless of time", failSummary.earned, 0);
+eq("failed stop still reports what was possible", failSummary.possible, 100);
+
+// A normal solve still works exactly like any other scored stop.
+const solvedState = L.freshState();
+solvedState.solved = ["ot4"];
+solvedState.puzzleElapsedMs = { ot4: 0 };
+const solvedSummary = L.stopPointsEarned(scoredOnetry, solvedState, failCfg);
+ok("a correct onetry answer is not flagged failed", !solvedSummary.failed);
+eq("a correct onetry answer earns full points", solvedSummary.earned, 100);
+
 /* ═══════════════════════════════════════════════════ 3c. LABELS ══ */
 section("3c. Labels & tokens");
 
@@ -511,7 +549,7 @@ HUNT.stops.forEach((stop, i) => {
        Array.isArray(stop.answers) && stop.answers.length > 0);
   }
 
-  if (L.stopType(stop) === "choice") {
+  if (L.stopType(stop) === "choice" || L.stopType(stop) === "onetry") {
     ok(at + " has 2+ choices", Array.isArray(stop.choices) && stop.choices.length >= 2);
     if (!L.isPlaceholderStop(stop) && Array.isArray(stop.choices)) {
       ok(at + " has a winnable option",

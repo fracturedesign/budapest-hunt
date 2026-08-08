@@ -232,6 +232,26 @@
   </section>
 
   <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: FAILED (interstitial)
+       Only reachable from a "onetry" stop's wrong first guess — see
+       submitOneTry()/goFailed() in app.js. No retry, no hints from here;
+       tapping through just moves on to the next stop like normal.
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen screen-center" id="screen-failed" hidden>
+    <div class="big-tick" id="failedTick">💀</div>
+    <h2 class="solved-title failed-title" id="failedTitle">Nope. That was your one shot.</h2>
+    <div class="points-badge points-badge-skipped" id="failedPoints" hidden></div>
+    <div class="card card-failure" id="failedCard">
+      <div class="prose" id="failedMessage"></div>
+    </div>
+    <figure class="stop-figure" id="failureFigure" hidden>
+      <img id="failureImage" alt="">
+      <figcaption id="failureCaption"></figcaption>
+    </figure>
+    <button class="btn btn-primary btn-huge" id="btnFailedNext">NEXT CLUE →</button>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
        SCREEN: FINAL SELFIE
        Appears once, after the last stop, before the finish screen — only
        when config.finalSelfie is set up (see isFinalSelfieEnabled in

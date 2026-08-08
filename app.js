@@ -62,9 +62,12 @@
    * "info"   — no challenge at all; a story beat or a waypoint
    * "picker" — tap one of several options to jump straight to that stop,
    *            by id; not "did you get it right", just "which path".
+   * "onetry" — multiple choice with no retry: get it wrong and it's an
+   *            outright fail (own failure screen), not "try again". Right
+   *            answers work exactly like "choice".
    * Anything unrecognised falls back to "text".                             */
 
-  var TASK_TYPES = ["text", "choice", "dare", "info", "picker"];
+  var TASK_TYPES = ["text", "choice", "dare", "info", "picker", "onetry"];
 
   function stopType(stop) {
     var t = stop && stop.type;
@@ -73,7 +76,7 @@
 
   /** Does this type require the player to get something right? */
   function typeNeedsAnswer(type) {
-    return type === "text" || type === "choice";
+    return type === "text" || type === "choice" || type === "onetry";
   }
 
   /** A "picker" stop's options — each { label, description, color, animated,
@@ -354,20 +357,22 @@
     if (!isScoredStop(stop)) return null;
     var scoring = resolveScoring(config, stop);
     var skipped = (state.skipped || []).indexOf(stop.id) !== -1;
+    var failed = (state.failed || []).indexOf(stop.id) !== -1;
     var solved = (state.solved || []).indexOf(stop.id) !== -1;
 
-    if (!skipped && !solved) {
-      return { possible: scoring.basePoints, earned: null, reached: false, skipped: false };
+    if (!skipped && !failed && !solved) {
+      return { possible: scoring.basePoints, earned: null, reached: false, skipped: false, failed: false };
     }
 
     var elapsedMsVal = (state.puzzleElapsedMs || {})[stop.id];
     var elapsedSeconds = elapsedMsVal != null ? elapsedMsVal / 1000 : 0;
     var hintCount = ((state.hintsUsed || {})[stop.id] || []).length;
     var wrongCount = (state.wrong || {})[stop.id] || 0;
-    var earned = computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped, wrongCount);
+    // A failed "onetry" stop scores 0, same treatment as a skip.
+    var earned = computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped || failed, wrongCount);
 
     return {
-      possible: scoring.basePoints, earned: earned, reached: true, skipped: skipped,
+      possible: scoring.basePoints, earned: earned, reached: true, skipped: skipped, failed: failed,
       elapsedSeconds: elapsedSeconds, hintCount: hintCount, wrongCount: wrongCount
     };
   }
@@ -471,6 +476,7 @@
     answerPlaceholder:"Type it here…",
     submitButton:     "SUBMIT",
     choiceLabel:      "Pick one",
+    onetryLabel:      "Pick one — you only get one shot",
     pickerLabel:      "Choose one",
     dareButton:       "✅ DONE — WE HAVE PROOF",
     infoButton:       "CONTINUE →",
@@ -500,10 +506,13 @@
     solvedTick:       "✅",
     skippedTitle:     "Fine. Moving on.",
     skippedMessage:   "Nobody has to know. (The scoreboard knows.)",
+    failTick:         "💀",
+    failureTitle:     "Nope. That was your one shot.",
     nextButton:       "NEXT CLUE →",
     finishButton:     "FINISH →",
     solvedPoints:        "+{earned} pts  (of {possible})",
     solvedPointsSkipped: "0 pts — skipped (missed {possible})",
+    solvedPointsFailed:  "0 pts — failed (missed {possible})",
 
     // finish screen
     finishKicker:     "🇭🇺 · Done · 🇭🇺",
@@ -518,6 +527,7 @@
     recapSummary:     "The full route, in case anyone wants to argue about it",
     recapSolved:      " — solved ✅",
     recapSkipped:     " — skipped 🫠",
+    recapFailed:      " — failed 💀",
     recapPoints:      " · {earned}/{possible} pts",
     resetButton:      "Reset the hunt (start over)",
     stagKicker:       "🦌 STAG SCORE",
@@ -607,6 +617,7 @@
       answers: {},          // { stopId: acceptedAnswerText }
       solved: [],           // [stopId]
       skipped: [],          // [stopId]
+      failed: [],           // [stopId] — a "onetry" stop's wrong first (only) guess
       excludedStopIds: [],  // [stopId] — picker paths not taken this run
       puzzleStartedAt: {},  // { stopId: timestamp } — when the group reached this stop's puzzle screen
       puzzleElapsedMs: {},  // { stopId: ms } — frozen the moment it's solved or skipped
@@ -707,6 +718,7 @@
     merged.answers = merged.answers || {};
     merged.solved = Array.isArray(merged.solved) ? merged.solved : [];
     merged.skipped = Array.isArray(merged.skipped) ? merged.skipped : [];
+    merged.failed = Array.isArray(merged.failed) ? merged.failed : [];
     merged.excludedStopIds = Array.isArray(merged.excludedStopIds) ? merged.excludedStopIds : [];
     merged.puzzleStartedAt = merged.puzzleStartedAt || {};
     merged.puzzleElapsedMs = merged.puzzleElapsedMs || {};
@@ -890,7 +902,7 @@
   }
 
   function screens() {
-    return ["start", "travel", "puzzle", "solved", "selfie", "finish"];
+    return ["start", "travel", "puzzle", "solved", "failed", "selfie", "finish"];
   }
 
   function show(name) {
@@ -1252,8 +1264,9 @@
       $("btnSubmit").textContent = stop.submitButton || t("submitButton");
       $("answerForm").hidden = false;
 
-    } else if (type === "choice") {
-      $("choiceLabel").textContent = stop.answerLabel || t("choiceLabel");
+    } else if (type === "choice" || type === "onetry") {
+      $("choiceLabel").textContent = stop.answerLabel ||
+        (type === "onetry" ? t("onetryLabel") : t("choiceLabel"));
       var box = $("choiceButtons");
       box.innerHTML = "";
       // Skip unfilled rows so a half-written stop doesn't render blank buttons.
@@ -1263,7 +1276,11 @@
         btn.type = "button";
         btn.className = "btn btn-choice";
         btn.textContent = choice;
-        btn.addEventListener("click", function () { submitValue(choice, btn); });
+        // "choice" lets you retry a wrong tap; "onetry" fails outright —
+        // there's no second option here, so no shakeEl either.
+        btn.addEventListener("click", type === "onetry"
+          ? function () { submitOneTry(choice); }
+          : function () { submitValue(choice, btn); });
         box.appendChild(btn);
       });
       $("choiceZone").hidden = false;
@@ -1376,8 +1393,10 @@
     var used = (state.hintsUsed[stop.id] || []).length;
     var totalHints = (stop.hints || []).length;
     var wrong = state.wrong[stop.id] || 0;
-    // dare/info stops can't be failed, so they never need an escape hatch.
-    var eligible = typeNeedsAnswer(stopType(stop)) &&
+    // dare/info/picker stops can't be failed, so they never need an escape
+    // hatch — and a "onetry" stop is already resolved (solved or failed) the
+    // instant a wrong tap lands, so it never lingers long enough to need one.
+    var eligible = typeNeedsAnswer(stopType(stop)) && stopType(stop) !== "onetry" &&
                    used >= totalHints && wrong >= (C.skipAfterWrongAnswers || 4);
 
     var btn = $("btnSkip");
@@ -1445,6 +1464,38 @@
     paintTaskPoints();   // the penalty should land the instant it's incurred
   }
 
+  /**
+   * "onetry" stops: no retry, no shake-and-try-again. A correct tap works
+   * exactly like a normal choice stop; a wrong one is an outright fail —
+   * straight to the failure screen, no second guess.
+   */
+  function submitOneTry(raw) {
+    var stop = currentStop();
+
+    if (isPhotoRequired(stop) && !photos[stop.id]) {
+      setFeedback(t("photoRequiredNote"), "bad");
+      return;
+    }
+
+    var result = checkAnswer(stop, raw);
+    state.answers[stop.id] = String(raw).trim();
+
+    if (result.ok) {
+      if (state.solved.indexOf(stop.id) === -1) state.solved.push(stop.id);
+      recordTaskElapsed(stop);
+      save();
+      goSolved();
+      return;
+    }
+
+    // Wrong on the only try this stop allows: failed, not "try again".
+    state.wrong[stop.id] = (state.wrong[stop.id] || 0) + 1;
+    if (state.failed.indexOf(stop.id) === -1) state.failed.push(stop.id);
+    recordTaskElapsed(stop);
+    save();
+    goFailed();
+  }
+
   function skipStop() {
     var stop = currentStop();
     if (state.skipped.indexOf(stop.id) === -1) state.skipped.push(stop.id);
@@ -1501,7 +1552,7 @@
 
     // Only show the celebration photo when they actually earned it.
     paintFigure("success", skipped ? null : stop.successImage);
-    paintSolvedPoints(stop, skipped);
+    paintPointsBadge("solvedPoints", stop, skipped ? "skipped" : "solved");
 
     $("btnNext").textContent = isLastEffectiveStop(state.stopIndex)
       ? (stop.nextButton || t("finishButton"))
@@ -1510,9 +1561,39 @@
     show("solved");
   }
 
-  /** The "+82 pts (of 100)" badge on the solved screen. */
-  function paintSolvedPoints(stop, skipped) {
-    var badge = $("solvedPoints");
+  /**
+   * The failure screen: a "onetry" stop's wrong (and only) guess. No retry
+   * button here — same as the solved screen, tapping through just calls
+   * advance() and moves on to whatever's next.
+   */
+  function goFailed() {
+    state.view = "failed"; save();
+    var stop = currentStop();
+
+    $("failedTick").textContent = stop.failTick || t("failTick");
+    $("failedTitle").textContent = stop.failureTitle || t("failureTitle");
+
+    var body = stop.failureMessage || "";
+    $("failedMessage").textContent = body;
+    $("failedCard").hidden = !body;
+
+    paintFigure("failure", stop.failureImage);
+    paintPointsBadge("failedPoints", stop, "failed");
+
+    $("btnFailedNext").textContent = isLastEffectiveStop(state.stopIndex)
+      ? (stop.nextButton || t("finishButton"))
+      : (stop.nextButton || t("nextButton"));
+    paintHud();
+    show("failed");
+  }
+
+  /**
+   * The "+82 pts (of 100)" badge — shared by the solved screen (mode
+   * "solved" or "skipped") and the failure screen (mode "failed"). A failed
+   * "onetry" stop always earns 0, same visual treatment as a skip.
+   */
+  function paintPointsBadge(badgeId, stop, mode) {
+    var badge = $(badgeId);
     if (!badge) return;
     if (!isScoringEnabled(C) || !isScoredStop(stop)) { badge.hidden = true; return; }
 
@@ -1521,8 +1602,10 @@
 
     badge.hidden = false;
     badge.className = "points-badge" +
-      (skipped ? " points-badge-skipped" : p.earned >= p.possible ? " points-badge-full" : "");
-    badge.textContent = skipped
+      (mode !== "solved" ? " points-badge-skipped" : p.earned >= p.possible ? " points-badge-full" : "");
+    badge.textContent = mode === "failed"
+      ? t("solvedPointsFailed", { possible: p.possible })
+      : mode === "skipped"
       ? t("solvedPointsSkipped", { possible: p.possible })
       : t("solvedPoints", { earned: p.earned, possible: p.possible });
   }
@@ -1653,7 +1736,8 @@
     // route recap entirely rather than listing them as "skipped".
     effectiveStops(STOPS, state).forEach(function (stop) {
       var li = document.createElement("li");
-      var mark = state.skipped.indexOf(stop.id) !== -1 ? t("recapSkipped")
+      var mark = state.failed.indexOf(stop.id) !== -1 ? t("recapFailed")
+               : state.skipped.indexOf(stop.id) !== -1 ? t("recapSkipped")
                : state.solved.indexOf(stop.id) !== -1 ? t("recapSolved")
                : "";
       var pts = "";
@@ -1788,7 +1872,7 @@
   }
 
   ["travelImage", "puzzleImage", "successImage", "startImage", "finishImage",
-   "photoCaptureImg", "selfiePhotoCaptureImg"]
+   "failureImage", "photoCaptureImg", "selfiePhotoCaptureImg"]
     .forEach(function (id) {
       $(id).addEventListener("click", function () { openLightbox(this.src); });
     });
@@ -1805,6 +1889,7 @@
   $("btnConfirmDone").addEventListener("click", function () { submitValue("done", null); });
   $("btnSkip").addEventListener("click", skipStop);
   $("btnNext").addEventListener("click", advance);
+  $("btnFailedNext").addEventListener("click", advance);
 
   /* ---- photo capture -------------------------------------------------------
    * TWO hidden file inputs, both feeding the same handler:
@@ -1910,6 +1995,7 @@
     if (state.startedAt == null) { goStart(); return; }
     startTimerLoop();
     if (state.view === "solved") { goSolved(false); return; }
+    if (state.view === "failed") { goFailed(); return; }
     if (state.view === "selfie") { goSelfie(); return; }
     if (state.view === "puzzle") { goPuzzle(); return; }
     goTravel();

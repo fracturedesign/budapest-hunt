@@ -107,7 +107,7 @@ with a stray comma.
 | | |
 |---|---|
 | **Edit any stop** | Name, teaser, travel clue (optional — can be skipped for on-site puzzles), arrival note, puzzle text, hints, accepted answers, success message |
-| **Choose a task type** | Text answer, multiple choice, dare, info-only, or picker (choose-your-path) — see below |
+| **Choose a task type** | Text answer, multiple choice, dare, info-only, picker (choose-your-path), or one-try choice — see below |
 | **Add / delete / duplicate stops** | `+ Add` in the sidebar, or the `⧉` and `✕` buttons on each row |
 | **Reorder** | `↑` `↓` on each stop. Numbering, the progress bar and "Stop N of M" all follow automatically |
 | **Add photos** | Travel clue, puzzle, **success screen**, plus the start and finish screens — drag, paste, or pick a file |
@@ -131,6 +131,7 @@ Each stop picks one. They change what players actually do, not just the wording.
 | **Dare / photo** | One confirm button | Can't be failed. No answer, no give-up button, never flagged as "needs an answer". Honour system — the right system for this |
 | **Info only** | One continue button | No challenge at all. A story beat, a warning, a waypoint |
 | **Picker (choose-your-path)** | Several labelled buttons, each with an optional description, colour and a small shimmer animation | Not a quiz — there's no right answer, just a fork. Tapping one jumps straight to that option's target stop by id. Whichever option(s) weren't tapped are excluded from the rest of that playthrough entirely: never played, not shown in the finish-screen recap, and not counted in the STAG score's possible-points total. The editor requires at least two options, each with a label and a valid target stop, and flags a target that's been renamed/deleted out from under it |
+| **One-try choice** | The options as big tap-targets, same as Multiple choice | No retry: the *first* tap is the only one that counts. Get it right and it behaves exactly like Multiple choice (success screen, points). Get it wrong and it's an outright fail — no shake-and-try-again, no hints escape hatch (there's nothing left to escape) — straight to its own failure screen (own emoji, headline, message and photo, all overridable per stop), then on to the next stop like normal. Scores 0 on a fail, same treatment as a skip, and shows as "failed 💀" in the finish-screen recap rather than "skipped" or "solved" |
 
 ### Scoring & STAG levels
 
@@ -385,8 +386,8 @@ stop's `id` unique.
 node test.js
 ```
 
-419 checks covering answer normalisation, matching, task types (including the
-picker/branching logic), label tokens, the timer (including the independent
+433 checks covering answer normalisation, matching, task types (including the
+picker/branching logic and the one-try-choice fail path), label tokens, the timer (including the independent
 show/hide toggle), penalty maths, the skip gate, the points/decay curve,
 STAG-level thresholds, the home-page scoring explainer, the final-selfie
 toggle, photo-capture defaults, embedded-image sanity, and the
