@@ -60,9 +60,11 @@
    * "choice" — tap one of several options
    * "dare"   — nothing to answer; one button confirms they did the thing
    * "info"   — no challenge at all; a story beat or a waypoint
+   * "picker" — tap one of several options to jump straight to that stop,
+   *            by id; not "did you get it right", just "which path".
    * Anything unrecognised falls back to "text".                             */
 
-  var TASK_TYPES = ["text", "choice", "dare", "info"];
+  var TASK_TYPES = ["text", "choice", "dare", "info", "picker"];
 
   function stopType(stop) {
     var t = stop && stop.type;
@@ -72,6 +74,36 @@
   /** Does this type require the player to get something right? */
   function typeNeedsAnswer(type) {
     return type === "text" || type === "choice";
+  }
+
+  /** A "picker" stop's options — each { label, description, color, animated,
+   *  targetStopId }. Missing/malformed is just no options (nothing to show,
+   *  same "degrade gracefully on bad content" convention as choices/hints). */
+  function pickerOptions(stop) {
+    return (stop && Array.isArray(stop.pickerOptions)) ? stop.pickerOptions : [];
+  }
+
+  /** Find a stop's array index by id, or -1. Used to jump straight to a
+   *  picker option's target regardless of where it sits in the list. */
+  function stopIndexById(stops, id) {
+    for (var i = 0; i < (stops || []).length; i++) {
+      if (stops[i] && stops[i].id === id) return i;
+    }
+    return -1;
+  }
+
+  /** Is this stop excluded from the current playthrough? A picker option
+   *  NOT chosen gets its target stop id added to state.excludedStopIds —
+   *  only one path through a picker is ever played in one run. */
+  function isExcludedStop(stop, state) {
+    return !!(stop && state && state.excludedStopIds &&
+              state.excludedStopIds.indexOf(stop.id) !== -1);
+  }
+
+  /** The stops that are actually in play this run — every stop minus
+   *  whichever picker paths weren't taken. */
+  function effectiveStops(stops, state) {
+    return (stops || []).filter(function (s) { return !isExcludedStop(s, state); });
   }
 
   /** Some puzzles are solved right where the group already is — no walk,
@@ -432,6 +464,7 @@
     answerPlaceholder:"Type it here…",
     submitButton:     "SUBMIT",
     choiceLabel:      "Pick one",
+    pickerLabel:      "Choose one",
     dareButton:       "✅ DONE — WE HAVE PROOF",
     infoButton:       "CONTINUE →",
     hintButton:       "💡 Reveal hint {n}  (+{min} min)",
@@ -523,6 +556,10 @@
     stopType: stopType,
     typeNeedsAnswer: typeNeedsAnswer,
     hasTravelClue: hasTravelClue,
+    pickerOptions: pickerOptions,
+    stopIndexById: stopIndexById,
+    isExcludedStop: isExcludedStop,
+    effectiveStops: effectiveStops,
     TASK_TYPES: TASK_TYPES,
     DEFAULT_LABELS: DEFAULT_LABELS,
     resolveLabels: resolveLabels,
@@ -563,6 +600,7 @@
       answers: {},          // { stopId: acceptedAnswerText }
       solved: [],           // [stopId]
       skipped: [],          // [stopId]
+      excludedStopIds: [],  // [stopId] — picker paths not taken this run
       puzzleStartedAt: {},  // { stopId: timestamp } — when the group reached this stop's puzzle screen
       puzzleElapsedMs: {},  // { stopId: ms } — frozen the moment it's solved or skipped
       msgIdx: { wrong: 0, correct: 0 }
@@ -662,6 +700,7 @@
     merged.answers = merged.answers || {};
     merged.solved = Array.isArray(merged.solved) ? merged.solved : [];
     merged.skipped = Array.isArray(merged.skipped) ? merged.skipped : [];
+    merged.excludedStopIds = Array.isArray(merged.excludedStopIds) ? merged.excludedStopIds : [];
     merged.puzzleStartedAt = merged.puzzleStartedAt || {};
     merged.puzzleElapsedMs = merged.puzzleElapsedMs || {};
     merged.msgIdx = merged.msgIdx || { wrong: 0, correct: 0 };
@@ -819,6 +858,24 @@
   function currentStop() { return STOPS[state.stopIndex]; }
   function isFinished() { return !!state.finishedAt; }
 
+  /** The next stop index in play, skipping over any picker path not taken
+   *  this run — or -1 if that was the last one. */
+  function nextStopIndex(fromIndex) {
+    for (var i = fromIndex + 1; i < STOPS.length; i++) {
+      if (!isExcludedStop(STOPS[i], state)) return i;
+    }
+    return -1;
+  }
+  function isLastEffectiveStop(index) { return nextStopIndex(index) === -1; }
+
+  /** { n, total } for "STOP n OF total" — counts only stops actually in
+   *  play this run, same convention effectiveStops() uses everywhere else. */
+  function effectiveProgress() {
+    var eff = effectiveStops(STOPS, state);
+    var rank = eff.indexOf(currentStop());
+    return { n: (rank === -1 ? eff.length : rank + 1), total: eff.length };
+  }
+
   function nextMessage(bucket, list) {
     var i = state.msgIdx[bucket] || 0;
     state.msgIdx[bucket] = (i + 1) % list.length;
@@ -882,10 +939,10 @@
   /* ---- HUD ---------------------------------------------------------------- */
 
   function paintHud() {
-    var done = isFinished() ? STOPS.length : state.stopIndex;
-    var vals = { n: state.stopIndex + 1, total: STOPS.length };
+    var vals = effectiveProgress();
+    var done = isFinished() ? vals.total : vals.n - 1;
     $("hudProgress").textContent = isFinished() ? t("hudFinished", vals) : t("hudProgress", vals);
-    $("hudBarFill").style.width = (done / STOPS.length * 100) + "%";
+    $("hudBarFill").style.width = (done / vals.total * 100) + "%";
     paintTimer();
   }
 
@@ -981,7 +1038,7 @@
 
   function paintTravel() {
     var stop = currentStop();
-    $("travelStopNum").textContent = t("hudProgress", { n: state.stopIndex + 1, total: STOPS.length });
+    $("travelStopNum").textContent = t("hudProgress", effectiveProgress());
     $("travelTeaser").textContent = stop.teaser || "";
     $("travelEyebrow").textContent = stop.travelEyebrow || t("travelEyebrow");
     $("travelClue").textContent = stop.travelClue || "";
@@ -1025,7 +1082,7 @@
     var stop = currentStop();
     var type = stopType(stop);
 
-    $("puzzleStopNum").textContent = t("hudProgress", { n: state.stopIndex + 1, total: STOPS.length });
+    $("puzzleStopNum").textContent = t("hudProgress", effectiveProgress());
     $("puzzleName").textContent = stop.name || stop.teaser || "";
     $("arrivalNote").textContent = stop.arrivalNote || "";
     $("arrivalNote").hidden = !stop.arrivalNote;
@@ -1081,7 +1138,7 @@
     }
 
     var controls = [$("btnConfirmDone"), $("btnSubmit")];
-    var choices = document.querySelectorAll("#choiceButtons .btn-choice");
+    var choices = document.querySelectorAll("#choiceButtons .btn-choice, #pickerButtons .btn-picker");
     for (var i = 0; i < choices.length; i++) controls.push(choices[i]);
 
     controls.forEach(function (el) {
@@ -1177,6 +1234,7 @@
     $("answerForm").hidden = true;
     $("choiceZone").hidden = true;
     $("btnConfirmDone").hidden = true;
+    $("pickerZone").hidden = true;
 
     if (type === "text") {
       $("answerLabel").textContent = stop.answerLabel || t("answerLabel");
@@ -1201,6 +1259,35 @@
         box.appendChild(btn);
       });
       $("choiceZone").hidden = false;
+
+    } else if (type === "picker") {
+      $("pickerLabel").textContent = stop.answerLabel || t("pickerLabel");
+      var pbox = $("pickerButtons");
+      pbox.innerHTML = "";
+      pickerOptions(stop)
+        .filter(function (opt) { return opt && String(opt.label || "").trim() && opt.targetStopId; })
+        .forEach(function (opt) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "btn btn-picker" + (opt.animated ? " btn-picker-animated" : "");
+          if (opt.color) btn.style.setProperty("--picker-color", opt.color);
+
+          var label = document.createElement("span");
+          label.className = "picker-option-label";
+          label.textContent = opt.label;
+          btn.appendChild(label);
+
+          if (opt.description) {
+            var desc = document.createElement("span");
+            desc.className = "picker-option-desc";
+            desc.textContent = opt.description;
+            btn.appendChild(desc);
+          }
+
+          btn.addEventListener("click", function () { choosePickerOption(stop, opt); });
+          pbox.appendChild(btn);
+        });
+      $("pickerZone").hidden = false;
 
     } else {
       // dare / info — one button, nothing to get wrong.
@@ -1407,7 +1494,7 @@
     paintFigure("success", skipped ? null : stop.successImage);
     paintSolvedPoints(stop, skipped);
 
-    $("btnNext").textContent = (state.stopIndex >= STOPS.length - 1)
+    $("btnNext").textContent = isLastEffectiveStop(state.stopIndex)
       ? (stop.nextButton || t("finishButton"))
       : (stop.nextButton || t("nextButton"));
     paintHud();
@@ -1432,7 +1519,8 @@
   }
 
   function advance() {
-    if (state.stopIndex >= STOPS.length - 1) {
+    var next = nextStopIndex(state.stopIndex);
+    if (next === -1) {
       // The selfie screen (if switched on) sits between the last stop and
       // the finish screen — it isn't a stop itself, so it doesn't touch
       // stopIndex, just state.view.
@@ -1440,7 +1528,34 @@
       finishGame();
       return;
     }
-    state.stopIndex += 1;
+    state.stopIndex = next;
+    goTravel();
+  }
+
+  /**
+   * A "picker" stop's option was tapped: jump straight to that option's
+   * target stop, and make sure every *other* option's target is excluded
+   * from the rest of this run — only one path through a picker is ever
+   * played in one playthrough (see effectiveStops()/isExcludedStop() above).
+   *
+   * No "correct!" interstitial — there's nothing to get right, just a
+   * choice — so this goes straight to the target's travel/puzzle screen.
+   */
+  function choosePickerOption(stop, chosen) {
+    var targetIndex = stopIndexById(STOPS, chosen && chosen.targetStopId);
+    if (targetIndex === -1) return;   // misconfigured stop — nothing to jump to
+
+    pickerOptions(stop).forEach(function (opt) {
+      if (opt === chosen || !opt.targetStopId) return;
+      if (state.excludedStopIds.indexOf(opt.targetStopId) === -1) {
+        state.excludedStopIds.push(opt.targetStopId);
+      }
+    });
+
+    if (state.solved.indexOf(stop.id) === -1) state.solved.push(stop.id);
+    recordTaskElapsed(stop);
+    state.stopIndex = targetIndex;
+    save();
     goTravel();
   }
 
@@ -1501,7 +1616,7 @@
     $("scoreFinal").textContent = formatTime(raw + pen);
     $("scoreRaw").textContent = formatTime(raw);
     $("scorePenalty").textContent = pen > 0 ? "+" + formatTime(pen) : t("noPenalty");
-    $("scoreStops").textContent = state.solved.length + "/" + STOPS.length;
+    $("scoreStops").textContent = state.solved.length + "/" + effectiveStops(STOPS, state).length;
     $("scoreHints").textContent = countHints(state);
     $("scoreWrong").textContent = countWrong(state);
     $("scoreSkipped").textContent = state.skipped.length;
@@ -1525,7 +1640,9 @@
 
     var ol = $("recapList");
     ol.innerHTML = "";
-    STOPS.forEach(function (stop) {
+    // Picker paths not taken this run never happened — leave them off the
+    // route recap entirely rather than listing them as "skipped".
+    effectiveStops(STOPS, state).forEach(function (stop) {
       var li = document.createElement("li");
       var mark = state.skipped.indexOf(stop.id) !== -1 ? t("recapSkipped")
                : state.solved.indexOf(stop.id) !== -1 ? t("recapSolved")
@@ -1595,8 +1712,9 @@
     if (!card) return;
     if (!isScoringEnabled(C)) { card.hidden = true; return; }
 
-    var possible = totalPossiblePoints(STOPS, C);
-    var earned = totalEarnedPoints(state, STOPS, C);
+    var eff = effectiveStops(STOPS, state);
+    var possible = totalPossiblePoints(eff, C);
+    var earned = totalEarnedPoints(state, eff, C);
     var percent = possible > 0 ? Math.round((earned / possible) * 100) : 0;
     var level = stagLevelFor(percent, C.stagLevels);
 

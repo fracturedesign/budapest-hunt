@@ -107,7 +107,7 @@ with a stray comma.
 | | |
 |---|---|
 | **Edit any stop** | Name, teaser, travel clue (optional — can be skipped for on-site puzzles), arrival note, puzzle text, hints, accepted answers, success message |
-| **Choose a task type** | Text answer, multiple choice, dare, or info-only — see below |
+| **Choose a task type** | Text answer, multiple choice, dare, info-only, or picker (choose-your-path) — see below |
 | **Add / delete / duplicate stops** | `+ Add` in the sidebar, or the `⧉` and `✕` buttons on each row |
 | **Reorder** | `↑` `↓` on each stop. Numbering, the progress bar and "Stop N of M" all follow automatically |
 | **Add photos** | Travel clue, puzzle, **success screen**, plus the start and finish screens — drag, paste, or pick a file |
@@ -130,6 +130,7 @@ Each stop picks one. They change what players actually do, not just the wording.
 | **Multiple choice** | The options as big tap-targets | Good when the answer is hard to spell, or for an "odd one out". The editor errors if none of your options matches an accepted answer, so you can't ship an unwinnable stop |
 | **Dare / photo** | One confirm button | Can't be failed. No answer, no give-up button, never flagged as "needs an answer". Honour system — the right system for this |
 | **Info only** | One continue button | No challenge at all. A story beat, a warning, a waypoint |
+| **Picker (choose-your-path)** | Several labelled buttons, each with an optional description, colour and a small shimmer animation | Not a quiz — there's no right answer, just a fork. Tapping one jumps straight to that option's target stop by id. Whichever option(s) weren't tapped are excluded from the rest of that playthrough entirely: never played, not shown in the finish-screen recap, and not counted in the STAG score's possible-points total. The editor requires at least two options, each with a label and a valid target stop, and flags a target that's been renamed/deleted out from under it |
 
 ### Scoring & STAG levels
 
@@ -381,11 +382,11 @@ stop's `id` unique.
 node test.js
 ```
 
-254 checks covering answer normalisation, matching, task types, label tokens,
-the timer (including the independent show/hide toggle), penalty maths, the
-skip gate, the points/decay curve, STAG-level thresholds, the home-page
-scoring explainer, the final-selfie toggle, photo-capture defaults,
-embedded-image sanity, and the
+385 checks covering answer normalisation, matching, task types (including the
+picker/branching logic), label tokens, the timer (including the independent
+show/hide toggle), penalty maths, the skip gate, the points/decay curve,
+STAG-level thresholds, the home-page scoring explainer, the final-selfie
+toggle, photo-capture defaults, embedded-image sanity, and the
 structure of every stop in
 `content.js`. It also prints which stops still contain unfilled placeholders.
 It won't tell you if a riddle is bad — that's what walking the route is for.

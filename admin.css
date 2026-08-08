@@ -325,6 +325,27 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
   .row-del { order: 3; }
 }
 
+/* ─────────────────────────────────────────────────── picker option rows ── */
+
+.picker-option-row { align-items: flex-start; }
+
+.picker-option-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+.picker-option-fields input { width: 100%; }
+
+.picker-option-row-2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.picker-option-row-2 select { flex: 1; min-width: 140px; }
+
 /* ───────────────────────────────────────────────────────── image field ── */
 
 .imgfield {

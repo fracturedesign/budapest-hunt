@@ -193,6 +193,13 @@
     <!-- type: "dare" / "info" — nothing to answer, just confirm and move on -->
     <button class="btn btn-primary btn-huge" id="btnConfirmDone" hidden></button>
 
+    <!-- type: "picker" — tap one option to jump straight to that stop by id;
+         no answer to get right, no hints, nothing else to skip. -->
+    <div id="pickerZone" class="picker-zone" hidden>
+      <div class="answer-label" id="pickerLabel">Choose one</div>
+      <div id="pickerButtons"></div>
+    </div>
+
     <!-- Explains why the proceed control above is greyed out, when a stop
          requires photo proof and none has been attached yet. -->
     <p class="photo-gate-note" id="photoGateNote" hidden></p>

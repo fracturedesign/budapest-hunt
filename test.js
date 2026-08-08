@@ -140,6 +140,32 @@ ok("stop has a travel clue by default",   L.hasTravelClue({}));
 ok("stop has a travel clue if skipTravel is false", L.hasTravelClue({ skipTravel: false }));
 ok("skipTravel:true removes the travel clue", !L.hasTravelClue({ skipTravel: true }));
 
+section("3b3. Picker / branching (choose-your-path)");
+
+eq("picker recognised as a type", L.stopType({ type: "picker" }), "picker");
+ok("picker needs no answer", !L.typeNeedsAnswer("picker"));
+ok("picker is never a placeholder", !L.isPlaceholderStop({ id: "p", type: "picker" }));
+
+eq("pickerOptions defaults to empty", L.pickerOptions({}).length, 0);
+eq("pickerOptions reads the array",
+   L.pickerOptions({ pickerOptions: [{ label: "A" }, { label: "B" }] }).length, 2);
+
+const branchStops = [
+  { id: "hub" }, { id: "path-a" }, { id: "path-b" }, { id: "reunion" }
+];
+eq("stopIndexById finds a real id",   L.stopIndexById(branchStops, "path-b"), 2);
+eq("stopIndexById on a missing id",   L.stopIndexById(branchStops, "nope"), -1);
+
+const branchState = { excludedStopIds: ["path-b"] };
+ok("excluded stop is reported excluded",     L.isExcludedStop({ id: "path-b" }, branchState));
+ok("non-excluded stop is not excluded",     !L.isExcludedStop({ id: "path-a" }, branchState));
+ok("a stop is never excluded with no state", !L.isExcludedStop({ id: "path-b" }, {}));
+
+const effective = L.effectiveStops(branchStops, branchState);
+eq("effectiveStops drops the excluded one", effective.length, 3);
+ok("effectiveStops keeps the chosen path",
+   effective.some(s => s.id === "path-a") && !effective.some(s => s.id === "path-b"));
+
 /* ═══════════════════════════════════════════════════ 3c. LABELS ══ */
 section("3c. Labels & tokens");
 

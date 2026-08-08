@@ -712,6 +712,52 @@ button, input { -webkit-tap-highlight-color: transparent; }
 .btn-choice:active { background: var(--bg-raised); border-color: var(--gold); }
 .btn-choice.shake { animation: shake .32s; border-color: var(--red); }
 
+/* ────────────────────────────────────────────────── picker (branch) ── */
+
+.picker-zone { margin-bottom: 18px; }
+.picker-zone .answer-label { margin-bottom: 10px; }
+
+.btn-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  background: var(--bg-input);
+  border: 2px solid var(--line);
+  text-align: left;
+  min-height: 62px;
+  white-space: normal;
+  position: relative;
+  overflow: hidden;
+}
+.btn-picker:active { background: var(--bg-raised); border-color: var(--gold); }
+
+.picker-option-label {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--picker-color, var(--text));
+}
+.picker-option-desc {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--text-dim);
+}
+
+/* Optional per-option "draw the eye here" shimmer — subtle, not flashy. */
+@keyframes picker-shimmer {
+  0%   { background-position: -150% 0; }
+  100% { background-position: 250% 0; }
+}
+.btn-picker-animated {
+  border-color: var(--picker-color, var(--gold));
+  background-image: linear-gradient(100deg,
+    transparent 30%, rgba(255, 255, 255, .16) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: picker-shimmer 2.6s ease-in-out infinite;
+}
+
 /* ──────────────────────────────────────────── locked-until-photo state ── */
 
 /* Applied to whichever "move on" control a stop uses, while it still needs

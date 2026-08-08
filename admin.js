@@ -211,6 +211,30 @@
       }
     }
 
+    if (type === "picker") {
+      var options = HuntLogic.pickerOptions(stop);
+      if (options.length < 2) {
+        out.push({ level: "red", text: "Picker needs at least two options — one option isn't a choice." });
+      }
+      var seenTargets = {};
+      options.forEach(function (opt, i) {
+        var n = i + 1;
+        if (!opt.label || !String(opt.label).trim()) {
+          out.push({ level: "red", text: "Option " + n + " has no label." });
+        }
+        if (!opt.targetStopId) {
+          out.push({ level: "red", text: "Option " + n + " doesn't point to a stop yet." });
+        } else if (opt.targetStopId === stop.id) {
+          out.push({ level: "red", text: "Option " + n + " points at this same stop — that would jump right back here." });
+        } else if (HuntLogic.stopIndexById(draft.stops, opt.targetStopId) === -1) {
+          out.push({ level: "red", text: 'Option ' + n + ' points to "' + opt.targetStopId + '", which doesn\'t exist (renamed or deleted?).' });
+        } else if (seenTargets[opt.targetStopId]) {
+          out.push({ level: "amber", text: "Two options both point to the same stop — one of them is redundant." });
+        }
+        seenTargets[opt.targetStopId] = true;
+      });
+    }
+
     if (hasInsertMarkers(stop)) out.push({ level: "amber", text: "Still contains [INSERT: ...] text." });
     if (needsAnswer && !(stop.hints || []).length) {
       out.push({ level: "amber", text: "No hints — the group has no way out if they get stuck." });
@@ -703,7 +727,8 @@
       text:   "Players type an answer into a box. The classic.",
       choice: "Players tap one of several options. Good when the answer is hard to spell, or for an \"odd one out\".",
       dare:   "Nothing to answer — one button confirms they did the thing. Can't be failed, so no hints penalty trap and no give-up button.",
-      info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues."
+      info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues.",
+      picker: "Players tap one of several options to pick which task comes next, jumping straight to it by id. Not a quiz — there's no right answer, just a path. Whichever options they didn't pick are excluded from the rest of this playthrough entirely."
     };
     main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "Task type" }),
@@ -711,14 +736,24 @@
         { value: "text",   label: "Text answer — type it in" },
         { value: "choice", label: "Multiple choice — tap an option" },
         { value: "dare",   label: "Dare / photo — tap to confirm done" },
-        { value: "info",   label: "Info only — no challenge" }
+        { value: "info",   label: "Info only — no challenge" },
+        { value: "picker", label: "Picker — choose which task comes next" }
       ], function (v) {
         stop.type = v;
         if (v === "choice" && !stop.choices) stop.choices = ["", "", ""];
+        if (v === "picker" && !stop.pickerOptions) {
+          stop.pickerOptions = [{ label: "", description: "", color: "", animated: false, targetStopId: "" },
+                                 { label: "", description: "", color: "", animated: false, targetStopId: "" }];
+        }
         touch();
         renderEditor();     // the rest of the form changes shape
       }), TYPE_INFO[HuntLogic.stopType(stop)])
     ));
+
+    // ---- picker options (only for type: "picker")
+    if (HuntLogic.stopType(stop) === "picker") {
+      main.appendChild(renderPickerOptionsField(stop));
+    }
 
     // ---- photo capture (independent of type, though "dare" defaults it on)
     var photoOn = HuntLogic.wantsPhotoCapture(stop);
@@ -1099,6 +1134,7 @@
       ["answerLabel",       "Label above the answer box"],
       ["answerPlaceholder", "Greyed-out text inside the box"],
       ["choiceLabel",       "Label above multiple-choice options"],
+      ["pickerLabel",       "Label above a \"choose your path\" picker stop's options"],
       ["emptyAnswer",       "Nag when they submit nothing"],
       ["placeholderBadge",  "Banner on a stop with no real answer yet"]
     ]},
@@ -1416,6 +1452,88 @@
       onclick: function () {
         if (!confirm("Replace all STAG levels with the built-in defaults?")) return;
         draft.config.stagLevels = clone(HuntLogic.DEFAULT_STAG_LEVELS);
+        touch();
+        paint();
+      }
+    }));
+
+    return fs;
+  }
+
+  /**
+   * A "picker" stop's options: which path the group can choose, and where
+   * each one jumps to. Mirrors renderStagLevelsField's repeatable-rows
+   * pattern above. Needs at least 2 options with a label and a target to
+   * make any sense — stopProblems() flags anything short of that.
+   */
+  function renderPickerOptionsField(stop) {
+    var fs = el("fieldset", { class: "fieldset" }, el("h3", { text: "Picker options" }));
+    fs.appendChild(el("p", { class: "fs-note", text:
+      "Whichever option the group doesn't tap is excluded from the rest of this playthrough — its target stop is never played this run." }));
+
+    var rows = el("div", { class: "list-rows" });
+
+    function targetOptions() {
+      var opts = [{ value: "", label: "— choose a stop —" }];
+      draft.stops.forEach(function (s) {
+        if (s === stop) return;   // can't point a picker at itself
+        opts.push({ value: s.id, label: (s.name || s.id) + "  (" + s.id + ")" });
+      });
+      return opts;
+    }
+
+    function paint() {
+      rows.innerHTML = "";
+      if (!Array.isArray(stop.pickerOptions)) stop.pickerOptions = [];
+      var options = stop.pickerOptions;
+
+      if (options.length < 2) {
+        fs.insertBefore(el("div", { class: "warnbox amber" },
+          "Add at least 2 options — one option with nothing to pick between isn't much of a choice."
+        ), rows);
+      } else {
+        var existingWarn = fs.querySelector(".warnbox");
+        if (existingWarn) existingWarn.parentNode.removeChild(existingWarn);
+      }
+
+      options.forEach(function (opt, i) {
+        var labelInput = el("input", {
+          type: "text", value: opt.label || "", placeholder: "Option label, e.g. \"Head to the bar\"",
+          oninput: function () { opt.label = this.value; touch(); }
+        });
+        var descInput = el("input", {
+          type: "text", value: opt.description || "", placeholder: "Optional description shown under the label",
+          oninput: function () { opt.description = this.value; touch(); }
+        });
+        var targetSelect = selectInput(opt.targetStopId || "", targetOptions(), function (v) {
+          opt.targetStopId = v; touch();
+        });
+        var animatedSelect = selectInput(String(!!opt.animated), [
+          { value: "false", label: "No animation" },
+          { value: "true",  label: "Small shimmer (draws the eye)" }
+        ], function (v) { opt.animated = (v === "true"); touch(); });
+
+        var row = el("div", { class: "list-row picker-option-row" },
+          el("div", { class: "picker-option-fields" },
+            labelInput,
+            descInput,
+            el("div", { class: "picker-option-row-2" }, colorInput(opt.color, function (v) { opt.color = v; touch(); }), targetSelect, animatedSelect)
+          ),
+          el("button", {
+            class: "row-del", text: "✕", title: "Remove this option",
+            onclick: function () { options.splice(i, 1); touch(); paint(); }
+          })
+        );
+        rows.appendChild(row);
+      });
+    }
+    paint();
+    fs.appendChild(rows);
+
+    fs.appendChild(el("button", {
+      class: "list-add", text: "+ Add option",
+      onclick: function () {
+        stop.pickerOptions.push({ label: "", description: "", color: "", animated: false, targetStopId: "" });
         touch();
         paint();
       }
