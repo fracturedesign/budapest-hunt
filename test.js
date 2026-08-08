@@ -536,8 +536,10 @@ HUNT.stops.forEach((stop, i) => {
   ok(at + " has a name", !!stop.name);
   ok(at + " has a valid type", L.TASK_TYPES.includes(L.stopType(stop)));
   // A picker's successMessage is dead text — choosePickerOption() jumps
-  // straight to the target stop and never shows a "solved" screen.
-  if (L.stopType(stop) !== "picker") {
+  // straight to the target stop and never shows a "solved" screen. Same
+  // for info: it's a pure waypoint, submitValue() skips the solved screen
+  // and advances straight to the next stop.
+  if (L.stopType(stop) !== "picker" && L.stopType(stop) !== "info") {
     ok(at + " has a success message", !!stop.successMessage);
   }
 

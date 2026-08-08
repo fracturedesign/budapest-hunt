@@ -1447,6 +1447,9 @@
       recordTaskElapsed(stop);
       save();
       if ($("answerInput")) $("answerInput").blur();
+      // Info stops are pure waypoints — nothing was "solved", so no
+      // celebration screen. Straight on to whatever's next.
+      if (stopType(stop) === "info") { advance(); return; }
       goSolved();
       return;
     }

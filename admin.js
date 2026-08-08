@@ -731,7 +731,7 @@
       text:   "Players type an answer into a box. The classic.",
       choice: "Players tap one of several options. Good when the answer is hard to spell, or for an \"odd one out\".",
       dare:   "Nothing to answer — one button confirms they did the thing. Can't be failed, so no hints penalty trap and no give-up button.",
-      info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues.",
+      info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues straight to the next stop — no \"correct!\" screen in between.",
       picker: "Players tap one of several options to pick which task comes next, jumping straight to it by id. Not a quiz — there's no right answer, just a path. Whichever options they didn't pick are excluded from the rest of this playthrough entirely.",
       onetry: "Multiple choice with no retry: get it wrong and it's an outright fail, straight to its own failure screen — no shake-and-try-again, no hints escape hatch. Right on the first tap works exactly like a normal Multiple choice stop."
     };
@@ -921,9 +921,10 @@
 
     main.appendChild(answersBox);
 
-    // ---- success screen (picker never shows one — it jumps straight to the
-    // chosen option's target stop, no "correct!" interstitial at all)
-    if (type !== "picker") {
+    // ---- success screen (picker jumps straight to its chosen target with
+    // no "correct!" interstitial at all; info is a pure waypoint with
+    // nothing to celebrate, so it skips straight to the next stop instead)
+    if (type !== "picker" && type !== "info") {
       main.appendChild(el("fieldset", { class: "fieldset" },
         el("h3", { text: "5. Success screen" }),
         el("p", { class: "fs-note", text: "What they see straight after getting it right." }),
