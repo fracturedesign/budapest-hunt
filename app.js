@@ -491,7 +491,7 @@
     finalSelfiePhotoLabel: "📸 Group selfie",
     finalSelfieButton: "CONTINUE TO RESULTS →",
     thenNowTitle:      "🤳 Then & Now",
-    thenNowFirstLabel: "{name}",
+    thenNowFirstLabel: "The group, at the start",
     thenNowSelfieLabel:"The group, at the end",
 
     // hud

@@ -1135,7 +1135,7 @@
       ["finalSelfiePhotoLabel", "Label above the selfie photo control"],
       ["finalSelfieButton", "Button once the selfie is attached"],
       ["thenNowTitle",       "\"Then & Now\" heading on the finish screen"],
-      ["thenNowFirstLabel",  "Caption under the earlier photo ({name})"],
+      ["thenNowFirstLabel",  "Caption under the earlier photo (can still use {name} for the stop's name)"],
       ["thenNowSelfieLabel", "Caption under the final selfie"]
     ]},
     { title: "Start & finish screens", note: "", keys: [
