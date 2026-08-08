@@ -237,11 +237,13 @@ eq("basePoints fallback",  L.resolveScoring({}, {}).basePoints, 100);
 eq("minPoints fallback",   L.resolveScoring({}, {}).minPoints, 10);
 eq("decayWindow fallback", L.resolveScoring({}, {}).decayWindowSeconds, 300);
 eq("hint penalty fallback", L.resolveScoring({}, {}).hintPointPenalty, 20);
+eq("wrong-answer penalty fallback", L.resolveScoring({}, {}).wrongAnswerPointPenalty, 10);
 eq("a real 0 override is honoured, not treated as unset",
    L.resolveScoring({ scoring: { minPoints: 0 } }, {}).minPoints, 0);
 
 // --- the points decay curve -------------------------------------------------
-const cfg = { scoring: { targetSeconds: 100, basePoints: 100, minPoints: 20, decayWindowSeconds: 100, hintPointPenalty: 15 } };
+const cfg = { scoring: { targetSeconds: 100, basePoints: 100, minPoints: 20, decayWindowSeconds: 100,
+                          hintPointPenalty: 15, wrongAnswerPointPenalty: 10 } };
 const stopA = {};
 
 eq("full points right at 0s",     L.computeStopPoints(stopA, cfg, 0, 0, false), 100);
@@ -264,6 +266,18 @@ eq("hints can't push a stop below 0",
    L.computeStopPoints(stopA, cfg, 0, 20, false), 0);
 eq("hints on top of decay still floor at 0",
    L.computeStopPoints(stopA, cfg, 200, 2, false), 0);     // 20 - 30 → 0
+
+// --- wrong-answer penalty ----------------------------------------------------
+eq("one wrong answer subtracts its cost",
+   L.computeStopPoints(stopA, cfg, 0, 0, false, 1), 90);     // 100 - 10
+eq("three wrong answers subtract three times",
+   L.computeStopPoints(stopA, cfg, 0, 0, false, 3), 70);     // 100 - 30
+eq("hints and wrong answers stack",
+   L.computeStopPoints(stopA, cfg, 0, 1, false, 1), 75);     // 100 - 15 - 10
+eq("wrong answers can't push a stop below 0",
+   L.computeStopPoints(stopA, cfg, 0, 0, false, 50), 0);
+eq("omitting wrongCount entirely is the same as 0",
+   L.computeStopPoints(stopA, cfg, 0, 0, false), L.computeStopPoints(stopA, cfg, 0, 0, false, 0));
 
 // --- skipping always scores 0, regardless of time or hints -----------------
 eq("skip is 0 even at 0 seconds with no hints",
@@ -288,11 +302,13 @@ eq("not-yet-reached is not reached",
 st.solved = ["sp1"];
 st.puzzleElapsedMs = { sp1: 50000 };            // 50s, under a 100s target
 st.hintsUsed = { sp1: [0] };                    // one hint
+st.wrong = { sp1: 2 };                          // two wrong guesses along the way
 const summary = L.stopPointsEarned(scoredStop, st, cfg);
 ok("solved stop is reached",       summary.reached);
 ok("solved stop is not marked skipped", !summary.skipped);
-eq("earned reflects the hint penalty", summary.earned, 85);   // full 100 - 15
+eq("earned reflects the hint AND wrong-answer penalty", summary.earned, 65);   // 100 - 15 - 20
 eq("possible is the stop's basePoints", summary.possible, 100);
+eq("summary reports the wrong-answer count", summary.wrongCount, 2);
 
 const st2 = L.freshState();
 st2.skipped = ["sp1"];

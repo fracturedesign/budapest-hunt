@@ -154,6 +154,8 @@ silently drift.
   a **decay window** you set (e.g. "3 minutes for full marks, decaying to the
   floor by 8 minutes").
 - Each **hint revealed** subtracts a flat penalty on top.
+- Each **wrong answer** — a mistyped answer or a wrong multiple-choice tap,
+  both count the same — subtracts its own flat penalty on top of that.
 - **Skipping** a stop always scores 0 — the one outcome worse than just being
   slow.
 
@@ -176,10 +178,11 @@ one row at 0% so nobody falls through with no title at all.
 On the puzzle screen, a live ⏱ clock shows next to each scored stop (turning
 amber past target, red past the decay window), a live 🏆 points chip sits
 beside it showing exactly what solving *right now* would earn (ticking down
-in real time, and dropping the instant a hint is revealed — no need to wait
-for the solved screen to see a penalty land), the hint button shows both its
-time and point cost, the solved screen shows a points badge, and the finish
-screen leads with a 🦌 STAG SCORE card before the regular scoreboard.
+in real time, and dropping the instant a hint is revealed or a wrong answer
+is submitted — no need to wait for the solved screen to see a penalty land),
+the hint button shows both its time and point cost, the solved screen shows
+a points badge, and the finish screen leads with a 🦌 STAG SCORE card before
+the regular scoreboard.
 
 **The start screen explains all of this up front**, in its own "🏆 How
 scoring works" card below the regular "How this works" one — so the group
@@ -382,7 +385,7 @@ stop's `id` unique.
 node test.js
 ```
 
-385 checks covering answer normalisation, matching, task types (including the
+419 checks covering answer normalisation, matching, task types (including the
 picker/branching logic), label tokens, the timer (including the independent
 show/hide toggle), penalty maths, the skip gate, the points/decay curve,
 STAG-level thresholds, the home-page scoring explainer, the final-selfie

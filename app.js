@@ -309,18 +309,22 @@
       basePoints:         numberOr(stop && stop.basePoints,         g.basePoints,         100),
       minPoints:          numberOr(stop && stop.minPoints,          g.minPoints,          10),
       decayWindowSeconds: numberOr(stop && stop.decayWindowSeconds, g.decayWindowSeconds, 300),
-      hintPointPenalty:   numberOr(stop && stop.hintPointPenalty,   g.hintPointPenalty,   20)
+      hintPointPenalty:   numberOr(stop && stop.hintPointPenalty,   g.hintPointPenalty,   20),
+      wrongAnswerPointPenalty:
+                          numberOr(stop && stop.wrongAnswerPointPenalty, g.wrongAnswerPointPenalty, 10)
     };
   }
 
   /**
-   * Points for one stop, given how long it took and how many hints were
-   * used. Full marks at or under the target time; a straight-line decay down
-   * to `minPoints` over `decayWindowSeconds` after that, then it holds at
-   * the floor. Each hint subtracts a flat penalty on top. A skip is always
-   * 0 — the one outcome that's worse than just being slow.
+   * Points for one stop, given how long it took, how many hints were used,
+   * and how many wrong answers were submitted. Full marks at or under the
+   * target time; a straight-line decay down to `minPoints` over
+   * `decayWindowSeconds` after that, then it holds at the floor. Each hint
+   * and each wrong answer subtracts its own flat penalty on top — a wrong
+   * multiple-choice tap counts the same as a wrong typed answer. A skip is
+   * always 0 — the one outcome that's worse than just being slow.
    */
-  function computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped) {
+  function computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped, wrongCount) {
     if (skipped) return 0;
     var s = resolveScoring(config, stop);
     var elapsed = Math.max(0, Number(elapsedSeconds) || 0);
@@ -337,6 +341,7 @@
     }
 
     points -= Math.max(0, hintCount || 0) * s.hintPointPenalty;
+    points -= Math.max(0, wrongCount || 0) * s.wrongAnswerPointPenalty;
     return Math.round(Math.max(0, Math.min(s.basePoints, points)));
   }
 
@@ -358,11 +363,12 @@
     var elapsedMsVal = (state.puzzleElapsedMs || {})[stop.id];
     var elapsedSeconds = elapsedMsVal != null ? elapsedMsVal / 1000 : 0;
     var hintCount = ((state.hintsUsed || {})[stop.id] || []).length;
-    var earned = computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped);
+    var wrongCount = (state.wrong || {})[stop.id] || 0;
+    var earned = computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped, wrongCount);
 
     return {
       possible: scoring.basePoints, earned: earned, reached: true, skipped: skipped,
-      elapsedSeconds: elapsedSeconds, hintCount: hintCount
+      elapsedSeconds: elapsedSeconds, hintCount: hintCount, wrongCount: wrongCount
     };
   }
 
@@ -421,6 +427,7 @@
     "Each stop has its own clock, starting the moment you arrive — not while you're still walking there.",
     "Solve within the target time (default {target}) for full points; take longer and they decay down to a floor.",
     "Every hint you reveal costs points too, on top of the extra minutes it adds.",
+    "Every wrong guess costs points too — think before you tap or type.",
     "Add it all up at the end and you're crowned with a STAG title, from Roadkill Stag to Legendary Stag."
   ];
 
@@ -1218,7 +1225,8 @@
     var scoring = resolveScoring(C, stop);
     var elapsedSec = (Date.now() - startedAt) / 1000;
     var hintCount = (state.hintsUsed[stop.id] || []).length;
-    var points = computeStopPoints(stop, C, elapsedSec, hintCount, false);
+    var wrongCount = state.wrong[stop.id] || 0;
+    var points = computeStopPoints(stop, C, elapsedSec, hintCount, false, wrongCount);
 
     box.hidden = false;
     box.textContent = t("taskPoints", { points: points, possible: scoring.basePoints });
@@ -1434,6 +1442,7 @@
       if (shakeEl.select) shakeEl.select();
     }
     paintSkip();
+    paintTaskPoints();   // the penalty should land the instant it's incurred
   }
 
   function skipStop() {

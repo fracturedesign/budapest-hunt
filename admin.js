@@ -258,6 +258,7 @@
       }
       if (scoring.decayWindowSeconds < 0) out.push({ level: "red", text: "Decay window can't be negative." });
       if (scoring.hintPointPenalty < 0) out.push({ level: "amber", text: "A negative hint penalty would give points back for using a hint." });
+      if (scoring.wrongAnswerPointPenalty < 0) out.push({ level: "amber", text: "A negative wrong-answer penalty would give points back for guessing wrong." });
     }
     return out;
   }
@@ -1010,12 +1011,20 @@
           }, g.decayWindowSeconds),
           "How many seconds past the target it takes to hit the floor. Points decay in a straight line across this window.")
       ));
-      fs.appendChild(field("Points lost per hint",
-        optionalNumberInput(stop.hintPointPenalty, function (v) {
-          if (v === undefined) delete stop.hintPointPenalty; else stop.hintPointPenalty = v;
-          touch();
-        }, g.hintPointPenalty),
-        "Subtracted once per hint revealed, on top of whatever the time decay already took."));
+      fs.appendChild(el("div", { class: "row2" },
+        field("Points lost per hint",
+          optionalNumberInput(stop.hintPointPenalty, function (v) {
+            if (v === undefined) delete stop.hintPointPenalty; else stop.hintPointPenalty = v;
+            touch();
+          }, g.hintPointPenalty),
+          "Subtracted once per hint revealed, on top of whatever the time decay already took."),
+        field("Points lost per wrong answer",
+          optionalNumberInput(stop.wrongAnswerPointPenalty, function (v) {
+            if (v === undefined) delete stop.wrongAnswerPointPenalty; else stop.wrongAnswerPointPenalty = v;
+            touch();
+          }, g.wrongAnswerPointPenalty),
+          "Subtracted for every wrong guess — a mistyped answer or a wrong multiple-choice tap both count.")
+      ));
     }
 
     return fs;
@@ -1355,8 +1364,14 @@
         field("Decay window (seconds)", numberInput(s.decayWindowSeconds == null ? 300 : s.decayWindowSeconds,
           function (v) { s.decayWindowSeconds = v; touch(); }), "Seconds past the target before points bottom out.")
       ),
-      field("Points lost per hint", numberInput(s.hintPointPenalty == null ? 20 : s.hintPointPenalty,
-        function (v) { s.hintPointPenalty = v; touch(); }))
+      el("div", { class: "row2" },
+        field("Points lost per hint", numberInput(s.hintPointPenalty == null ? 20 : s.hintPointPenalty,
+          function (v) { s.hintPointPenalty = v; touch(); })),
+        field("Points lost per wrong answer",
+          numberInput(s.wrongAnswerPointPenalty == null ? 10 : s.wrongAnswerPointPenalty,
+            function (v) { s.wrongAnswerPointPenalty = v; touch(); }),
+          "Subtracted for every wrong guess — mistyped answers and wrong multiple-choice taps both count.")
+      )
     ));
 
     var possible = HuntLogic.totalPossiblePoints(draft.stops, draft.config);
