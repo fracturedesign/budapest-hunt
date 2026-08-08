@@ -473,12 +473,19 @@ HUNT.stops.forEach((stop, i) => {
   ok(at + " has an id", !!stop.id);
   ok(at + " id is unique", !ids.has(stop.id));
   ids.add(stop.id);
-  ok(at + " has a travel clue", !!stop.travelClue && stop.travelClue.length > 20);
+  // skipTravel stops are deliberately on-site — no travel clue to write.
+  if (L.hasTravelClue(stop)) {
+    ok(at + " has a travel clue", !!stop.travelClue && stop.travelClue.length > 20);
+  }
   ok(at + " has a puzzle", !!stop.puzzle && stop.puzzle.length > 20);
   ok(at + " has a teaser", !!stop.teaser);
   ok(at + " has a name", !!stop.name);
   ok(at + " has a valid type", L.TASK_TYPES.includes(L.stopType(stop)));
-  ok(at + " has a success message", !!stop.successMessage);
+  // A picker's successMessage is dead text — choosePickerOption() jumps
+  // straight to the target stop and never shows a "solved" screen.
+  if (L.stopType(stop) !== "picker") {
+    ok(at + " has a success message", !!stop.successMessage);
+  }
 
   if (L.typeNeedsAnswer(L.stopType(stop))) {
     // No upper bound — the editor doesn't cap hint count either, and 1-2 was
