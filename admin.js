@@ -1128,8 +1128,6 @@
       ["photoRequiredNote",  "Shown while the proceed button is locked awaiting a photo"],
       ["pickPhotoButton",    "Link to attach an existing photo instead"],
       ["photoCaptureNote",   "Small print explaining where the photo goes"],
-      ["photoRecapTitle",    "\"Photos from tonight\" heading on the finish screen"],
-      ["photoRecapNote",     "Small print under that recap grid"],
       ["finalSelfieTitle",   "Heading on the final group-selfie screen"],
       ["finalSelfiePrompt",  "Instructions on the final group-selfie screen"],
       ["finalSelfiePhotoLabel", "Label above the selfie photo control"],

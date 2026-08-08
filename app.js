@@ -482,8 +482,6 @@
     resetButton:      "Reset the hunt (start over)",
     stagKicker:       "🦌 STAG SCORE",
     stagPoints:       "{earned} / {possible} pts  ({percent}%)",
-    photoRecapTitle:  "📸 Photos from tonight",
-    photoRecapNote:   "These live in this browser only, and they're the small preview copies — tap any one to open it, then long-press to add it to your Photos before you clear your browser data.",
 
     // final selfie screen (only shown if config.finalSelfie is set up)
     finalSelfieTitle:  "One last thing",
@@ -1512,7 +1510,6 @@
     paintFigure("finish", C.finishImage);
     paintStagCard();
     paintThenNow();
-    paintPhotoRecap();
 
     var blurb = $("finishBlurb");
     blurb.textContent = (C.finishBlurb || []).join("\n\n");
@@ -1583,29 +1580,6 @@
     fig.appendChild(img);
     fig.appendChild(figcap);
     return fig;
-  }
-
-  /** The "📸 Photos from tonight" strip — only the stops that actually got one. */
-  function paintPhotoRecap() {
-    var box = $("photoRecap");
-    if (!box) return;
-
-    var ids = STOPS.filter(function (stop) { return photos[stop.id]; });
-    if (!ids.length) { box.hidden = true; return; }
-
-    box.hidden = false;
-    $("photoRecapTitle").textContent = t("photoRecapTitle");
-    $("photoRecapNote").textContent = t("photoRecapNote");
-
-    var grid = $("photoRecapGrid");
-    grid.innerHTML = "";
-    ids.forEach(function (stop) {
-      var img = document.createElement("img");
-      img.src = photos[stop.id];
-      img.alt = stop.name || stop.id;
-      img.addEventListener("click", function () { openLightbox(this.src); });
-      grid.appendChild(img);
-    });
   }
 
   /** The "🦌 STAG SCORE" card: total points, percentage and the earned level. */
