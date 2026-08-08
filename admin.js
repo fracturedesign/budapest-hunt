@@ -785,6 +785,9 @@
       fsTravel.appendChild(field("\"We're here\" button text", textInput(stop.arrivedButton, set("arrivedButton"),
             draft.config.labels && draft.config.labels.arrivedButton || "WE'RE HERE →"),
             "Leave blank to use the game-wide default."));
+      fsTravel.appendChild(field("Footnote under that button", textInput(stop.travelFootnote, set("travelFootnote"),
+            draft.config.labels && draft.config.labels.travelFootnote || "Only tap this once you're actually standing there."),
+            "Leave blank to use the game-wide default."));
     }
     fsTravel.appendChild(field("Arrival note", textInput(stop.arrivalNote, set("arrivalNote")),
             "Small italic line at the top of the puzzle screen. Optional flavour, e.g. \"Phones out for this one.\""));

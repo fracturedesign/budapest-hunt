@@ -980,8 +980,10 @@
     $("travelTeaser").textContent = stop.teaser || "";
     $("travelEyebrow").textContent = stop.travelEyebrow || t("travelEyebrow");
     $("travelClue").textContent = stop.travelClue || "";
-    $("travelFootnote").textContent = t("travelFootnote");
-    // Per-stop button override, e.g. "WE FOUND IT →" on one particular stop.
+    // Per-stop overrides, e.g. "WE FOUND IT →" on one particular stop, or a
+    // different footnote when the stop doesn't need the usual "stand there
+    // first" reminder (an indoor puzzle, say).
+    $("travelFootnote").textContent = stop.travelFootnote || t("travelFootnote");
     $("btnArrived").textContent = stop.arrivedButton || t("arrivedButton");
     paintFigure("travel", stop.travelImage);
     paintHud();
