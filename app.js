@@ -736,14 +736,19 @@
                             "the camera capture button gives a JPEG directly."));
         };
         img.onload = function () {
-          var maxDim = 640;
+          // 1000px/0.78 looks fine as a grid thumbnail AND holds up reasonably
+          // when tapped open full-screen in the lightbox — 640px/0.6 (the old
+          // numbers) was fine as a thumbnail but turned soft/blocky full-screen.
+          // Still comfortably small per photo, so a handful of stops' worth
+          // won't come close to blowing the ~5MB localStorage quota.
+          var maxDim = 1000;
           var scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
           var w = Math.max(1, Math.round(img.naturalWidth * scale));
           var h = Math.max(1, Math.round(img.naturalHeight * scale));
           var canvas = document.createElement("canvas");
           canvas.width = w; canvas.height = h;
           canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", 0.6));
+          resolve(canvas.toDataURL("image/jpeg", 0.78));
         };
         img.src = reader.result;
       };
@@ -1564,17 +1569,19 @@
     grid.innerHTML = "";
     if (firstStop) {
       grid.appendChild(thenNowFigure(photos[firstStop.id],
-        t("thenNowFirstLabel", { name: firstStop.name || firstStop.id })));
+        t("thenNowFirstLabel", { name: firstStop.name || firstStop.id }), firstStop.id));
     }
-    grid.appendChild(thenNowFigure(selfieUri, t("thenNowSelfieLabel")));
+    grid.appendChild(thenNowFigure(selfieUri, t("thenNowSelfieLabel"), FINAL_SELFIE_ID));
   }
 
-  function thenNowFigure(uri, caption) {
+  function thenNowFigure(uri, caption, photoId) {
     var fig = document.createElement("figure");
     var img = document.createElement("img");
     img.src = uri;
     img.alt = caption;
-    img.addEventListener("click", function () { openLightbox(this.src); });
+    img.addEventListener("click", function () {
+      openLightbox(fullResPhotoUrl(photoId) || this.src);
+    });
     var figcap = document.createElement("figcaption");
     figcap.textContent = caption;
     fig.appendChild(img);
@@ -1631,6 +1638,18 @@
   });
 
   /* ---- photo lightbox ----------------------------------------------------- */
+
+  /**
+   * Prefer the full-res original still sitting in memory (see
+   * originalPhotoFiles above) over the downscaled copy that's actually
+   * displayed — same-session viewing gets full quality for free; after a
+   * reload this just returns null and the caller falls back to the
+   * downscaled src that's on screen already.
+   */
+  function fullResPhotoUrl(photoId) {
+    var file = photoId && originalPhotoFiles[photoId];
+    return file ? URL.createObjectURL(file) : null;
+  }
 
   function openLightbox(src) {
     $("lightboxImage").src = src;
