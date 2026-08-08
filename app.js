@@ -522,7 +522,7 @@
     scoreStopsLabel:  "Stops solved",
     scoreHintsLabel:  "Hints burned",
     scoreWrongLabel:  "Wrong guesses",
-    scoreSkippedLabel:"Stops skipped",
+    scoreGirlsMetLabel:"Girls met",
     noPenalty:        "none 😤",
     recapSummary:     "The full route, in case anyone wants to argue about it",
     recapSolved:      " — solved ✅",
@@ -1711,7 +1711,9 @@
     $("scoreStops").textContent = state.solved.length + "/" + effectiveStops(STOPS, state).length;
     $("scoreHints").textContent = countHints(state);
     $("scoreWrong").textContent = countWrong(state);
-    $("scoreSkipped").textContent = state.skipped.length;
+    // Not tracked by the game — a manual, joke stat the organiser sets once
+    // in Game settings (defaults to 0, same as everyone starts the night).
+    $("scoreGirlsMet").textContent = numberOr(C.girlsMet, 0);
 
     setLabel("scoreFinal", "scoreFinalLabel");
     setLabel("scoreRaw", "scoreRawLabel");
@@ -1719,7 +1721,7 @@
     setLabel("scoreStops", "scoreStopsLabel");
     setLabel("scoreHints", "scoreHintsLabel");
     setLabel("scoreWrong", "scoreWrongLabel");
-    setLabel("scoreSkipped", "scoreSkippedLabel");
+    setLabel("scoreGirlsMet", "scoreGirlsMetLabel");
 
     paintFigure("finish", C.finishImage);
     paintStagCard();

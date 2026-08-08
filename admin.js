@@ -1127,7 +1127,10 @@
                 function (a) { c.finishBlurb = a; }, "One paragraph per line.",
                 { multiline: true, addLabel: "+ Add paragraph" }),
       imageField("Finish screen photo (optional)", function () { return c.finishImage; },
-                 function (v) { c.finishImage = v; })
+                 function (v) { c.finishImage = v; }),
+      field("\"Girls met\" stat", numberInput(c.girlsMet == null ? 0 : c.girlsMet,
+        function (v) { c.girlsMet = v; touch(); }),
+        "Not tracked by the game — just a number you set once for the finish-screen scoreboard. Defaults to 0.")
     ));
 
     main.appendChild(el("fieldset", { class: "fieldset" },
@@ -1246,7 +1249,7 @@
       ["scoreStopsLabel",   "Stops solved"],
       ["scoreHintsLabel",   "Hints burned"],
       ["scoreWrongLabel",   "Wrong guesses"],
-      ["scoreSkippedLabel", "Stops skipped"],
+      ["scoreGirlsMetLabel","\"Girls met\" stat label"],
       ["factGroom",         "Start screen: \"Groom\""],
       ["factStops",         "Start screen: \"Stops\""],
       ["factDuration",      "Start screen: \"Time\""],
