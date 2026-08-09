@@ -759,6 +759,22 @@ button, input { -webkit-tap-highlight-color: transparent; }
   animation: picker-shimmer 2.6s ease-in-out infinite;
 }
 
+/* ───────────────────────────────────────────── sequence (sub-tasks) ── */
+
+.sequence-zone { margin-bottom: 18px; text-align: center; }
+
+.sequence-sub-label { margin: 0 0 10px; font-size: 24px; font-weight: 900; }
+
+.sequence-zone .prose { text-align: left; margin-bottom: 18px; }
+
+.sequence-countdown {
+  font-size: 56px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold);
+  letter-spacing: .02em;
+}
+
 /* ──────────────────────────────────────────── locked-until-photo state ── */
 
 /* Applied to whichever "move on" control a stop uses, while it still needs

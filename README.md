@@ -107,7 +107,7 @@ with a stray comma.
 | | |
 |---|---|
 | **Edit any stop** | Name, teaser, travel clue (optional — can be skipped for on-site puzzles), arrival note, puzzle text, hints, accepted answers, success message |
-| **Choose a task type** | Text answer, multiple choice, dare, info-only, picker (choose-your-path), or one-try choice — see below |
+| **Choose a task type** | Text answer, multiple choice, dare, info-only, picker (choose-your-path), one-try choice, or timed sequence — see below |
 | **Add / delete / duplicate stops** | `+ Add` in the sidebar, or the `⧉` and `✕` buttons on each row |
 | **Reorder** | `↑` `↓` on each stop. Numbering, the progress bar and "Stop N of M" all follow automatically |
 | **Add photos** | Travel clue, puzzle, **success screen**, plus the start and finish screens — drag, paste, or pick a file |
@@ -132,6 +132,7 @@ Each stop picks one. They change what players actually do, not just the wording.
 | **Info only** | One continue button | No challenge at all. A story beat, a warning, a waypoint. No "correct!" screen either — the continue button goes straight to the next stop |
 | **Picker (choose-your-path)** | Several labelled buttons, each with an optional description, colour and a small shimmer animation | Not a quiz — there's no right answer, just a fork. Tapping one jumps straight to that option's target stop by id. Whichever option(s) weren't tapped are excluded from the rest of that playthrough entirely: never played, not shown in the finish-screen recap, and not counted in the STAG score's possible-points total. The editor requires at least two options, each with a label and a valid target stop, and flags a target that's been renamed/deleted out from under it |
 | **One-try choice** | The options as big tap-targets, same as Multiple choice | No retry: the *first* tap is the only one that counts. Get it right and it behaves exactly like Multiple choice (success screen, points). Get it wrong and it's an outright fail — no shake-and-try-again, no hints escape hatch (there's nothing left to escape) — straight to its own failure screen (own emoji, headline, message and photo, all overridable per stop), then on to the next stop like normal. Scores 0 on a fail, same treatment as a skip, and shows as "failed 💀" in the finish-screen recap rather than "skipped" or "solved" |
+| **Timed sequence** | A sub-task's label, instructions and optional photo, plus a big countdown | Several timed sub-tasks in a row (e.g. "Russian accent for 15 minutes, then British, then pirate"), each with its own custom duration. Purely passive — no button, nothing to answer. A sub-task's clock hitting 0 auto-advances to the next one; finishing the last one solves the stop like any other type (success screen, points if you've turned scoring on). Unscored by default, like Info only — it's a fixed-duration activity, not a race. Wall-clock based like every other timer here, so a reload mid-sequence resumes at the right sub-task with the right time remaining, even catching up through any that fully expired while the tab was closed. The editor requires at least one sub-task, each with a label, a positive duration, and (nudged, not required) some instructions |
 
 ### Scoring & STAG levels
 
@@ -386,8 +387,9 @@ stop's `id` unique.
 node test.js
 ```
 
-432 checks covering answer normalisation, matching, task types (including the
-picker/branching logic and the one-try-choice fail path), label tokens, the timer (including the independent
+458 checks covering answer normalisation, matching, task types (including the
+picker/branching logic, the one-try-choice fail path, and the timed-sequence
+auto-advance), label tokens, the timer (including the independent
 show/hide toggle), penalty maths, the skip gate, the points/decay curve,
 STAG-level thresholds, the home-page scoring explainer, the final-selfie
 toggle, photo-capture defaults, embedded-image sanity, and the

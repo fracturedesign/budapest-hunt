@@ -346,6 +346,36 @@ input::placeholder, textarea::placeholder { color: var(--text-faint); }
 }
 .picker-option-row-2 select { flex: 1; min-width: 140px; }
 
+/* ──────────────────────────────────────────────────────── sub-task rows ── */
+
+.sub-task-row { align-items: flex-start; }
+
+.sub-task-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sub-task-row-1 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sub-task-row-1 input[type="text"] { flex: 1; min-width: 160px; }
+
+.sub-task-duration {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.sub-task-duration span { color: var(--text-dim); font-size: 13px; }
+
+.sub-task-fields textarea { width: 100%; resize: vertical; }
+
 /* ───────────────────────────────────────────────────────── image field ── */
 
 .imgfield {

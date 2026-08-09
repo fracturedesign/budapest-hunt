@@ -204,6 +204,27 @@ const solvedSummary = L.stopPointsEarned(scoredOnetry, solvedState, failCfg);
 ok("a correct onetry answer is not flagged failed", !solvedSummary.failed);
 eq("a correct onetry answer earns full points", solvedSummary.earned, 100);
 
+section("3b5. Timed sequence (auto-advancing sub-tasks)");
+
+eq("sequence recognised as a type", L.stopType({ type: "sequence" }), "sequence");
+ok("sequence needs no answer", !L.typeNeedsAnswer("sequence"));
+ok("sequence is never a placeholder", !L.isPlaceholderStop({ id: "sq", type: "sequence" }));
+ok("sequence is unscored by default, like info",
+   !L.isScoredStop({ id: "sq2", type: "sequence" }));
+ok("sequence can still be scored with an explicit override",
+   L.isScoredStop({ id: "sq3", type: "sequence", scored: true }));
+
+eq("subTasks defaults to empty", L.subTasks({}).length, 0);
+eq("subTasks reads the array",
+   L.subTasks({ subTasks: [{ label: "A" }, { label: "B" }] }).length, 2);
+
+eq("subTaskDurationSeconds uses the real value", L.subTaskDurationSeconds({ durationSeconds: 900 }), 900);
+eq("subTaskDurationSeconds falls back to 60 when unset", L.subTaskDurationSeconds({}), 60);
+eq("subTaskDurationSeconds falls back to 60 for a zero/negative value",
+   L.subTaskDurationSeconds({ durationSeconds: 0 }), 60);
+eq("subTaskDurationSeconds falls back to 60 for garbage input",
+   L.subTaskDurationSeconds({ durationSeconds: "banana" }), 60);
+
 /* ═══════════════════════════════════════════════════ 3c. LABELS ══ */
 section("3c. Labels & tokens");
 
@@ -558,6 +579,16 @@ HUNT.stops.forEach((stop, i) => {
          stop.choices.some(c => L.checkAnswer(stop, c).ok),
          "no listed option matches an accepted answer");
     }
+  }
+
+  if (L.stopType(stop) === "sequence") {
+    const subs = L.subTasks(stop);
+    ok(at + " has at least 1 sub-task", subs.length >= 1);
+    subs.forEach((sub, si) => {
+      ok(at + " sub-task " + (si + 1) + " has a label", !!sub.label);
+      ok(at + " sub-task " + (si + 1) + " has a positive duration",
+         L.subTaskDurationSeconds(sub) > 0);
+    });
   }
 
   // Every real (non-placeholder) answer must actually match itself once

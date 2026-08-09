@@ -200,6 +200,20 @@
       <div id="pickerButtons"></div>
     </div>
 
+    <!-- type: "sequence" — several timed sub-tasks in a row, purely passive:
+         no button, no answer. Auto-advances on its own; see
+         paintSequenceStop()/tickSequenceCountdown() in app.js. -->
+    <div id="sequenceZone" class="sequence-zone" hidden>
+      <div class="card-eyebrow" id="sequenceSubEyebrow">Sub-task 1 of 3</div>
+      <h3 class="sequence-sub-label" id="sequenceSubLabel"></h3>
+      <div class="prose" id="sequenceSubInstructions"></div>
+      <figure class="stop-figure" id="sequenceSubFigure" hidden>
+        <img id="sequenceSubImage" alt="">
+        <figcaption id="sequenceSubCaption"></figcaption>
+      </figure>
+      <div class="sequence-countdown" id="sequenceCountdown">0:00</div>
+    </div>
+
     <!-- Explains why the proceed control above is greyed out, when a stop
          requires photo proof and none has been attached yet. -->
     <p class="photo-gate-note" id="photoGateNote" hidden></p>

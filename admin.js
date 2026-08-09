@@ -238,6 +238,25 @@
       });
     }
 
+    if (type === "sequence") {
+      var subs = HuntLogic.subTasks(stop);
+      if (subs.length < 1) {
+        out.push({ level: "red", text: "Timed sequence needs at least one sub-task." });
+      }
+      subs.forEach(function (sub, i) {
+        var n = i + 1;
+        if (!sub.label || !String(sub.label).trim()) {
+          out.push({ level: "red", text: "Sub-task " + n + " has no label." });
+        }
+        if (!sub.instructions || !String(sub.instructions).trim()) {
+          out.push({ level: "amber", text: "Sub-task " + n + " has no instructions — the group won't know what to do while it counts down." });
+        }
+        if (!(Number(sub.durationSeconds) > 0)) {
+          out.push({ level: "red", text: "Sub-task " + n + "'s duration must be greater than 0 seconds." });
+        }
+      });
+    }
+
     if (hasInsertMarkers(stop)) out.push({ level: "amber", text: "Still contains [INSERT: ...] text." });
     if (needsAnswer && !(stop.hints || []).length) {
       out.push({ level: "amber", text: "No hints — the group has no way out if they get stuck." });
@@ -733,7 +752,8 @@
       dare:   "Nothing to answer — one button confirms they did the thing. Can't be failed, so no hints penalty trap and no give-up button.",
       info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues straight to the next stop — no \"correct!\" screen in between.",
       picker: "Players tap one of several options to pick which task comes next, jumping straight to it by id. Not a quiz — there's no right answer, just a path. Whichever options they didn't pick are excluded from the rest of this playthrough entirely.",
-      onetry: "Multiple choice with no retry: get it wrong and it's an outright fail, straight to its own failure screen — no shake-and-try-again, no hints escape hatch. Right on the first tap works exactly like a normal Multiple choice stop."
+      onetry: "Multiple choice with no retry: get it wrong and it's an outright fail, straight to its own failure screen — no shake-and-try-again, no hints escape hatch. Right on the first tap works exactly like a normal Multiple choice stop.",
+      sequence: "Several timed sub-tasks in a row (e.g. \"do a Russian accent for 15 minutes, then a British one\"). Purely passive — no button, nothing to answer. Each sub-task counts down on its own clock; hitting 0 auto-advances to the next one, and finishing the last one solves the stop like normal."
     };
     main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "Task type" }),
@@ -743,7 +763,8 @@
         { value: "dare",   label: "Dare / photo — tap to confirm done" },
         { value: "info",   label: "Info only — no challenge" },
         { value: "picker", label: "Picker — choose which task comes next" },
-        { value: "onetry", label: "One-try choice — wrong tap fails outright" }
+        { value: "onetry", label: "One-try choice — wrong tap fails outright" },
+        { value: "sequence", label: "Timed sequence — sub-tasks that auto-advance" }
       ], function (v) {
         stop.type = v;
         if ((v === "choice" || v === "onetry") && !stop.choices) stop.choices = ["", "", ""];
@@ -751,10 +772,19 @@
           stop.pickerOptions = [{ label: "", description: "", color: "", animated: false, targetStopId: "" },
                                  { label: "", description: "", color: "", animated: false, targetStopId: "" }];
         }
+        if (v === "sequence" && !stop.subTasks) {
+          stop.subTasks = [{ label: "", instructions: "", image: null, durationSeconds: 60 },
+                            { label: "", instructions: "", image: null, durationSeconds: 60 }];
+        }
         touch();
         renderEditor();     // the rest of the form changes shape
       }), TYPE_INFO[HuntLogic.stopType(stop)])
     ));
+
+    // ---- sub-tasks (only for type: "sequence")
+    if (HuntLogic.stopType(stop) === "sequence") {
+      main.appendChild(renderSubTasksField(stop));
+    }
 
     // ---- picker options (only for type: "picker")
     if (HuntLogic.stopType(stop) === "picker") {
@@ -908,6 +938,10 @@
     } else if (type === "picker") {
       // Picker's options (with their own targets) are edited in their own
       // fieldset above, right after Task type — nothing to show here.
+    } else if (type === "sequence") {
+      // Sub-tasks (with their own durations) are edited in their own
+      // fieldset above, right after Task type — nothing to show here. No
+      // button either — sequence is purely passive, timer-driven.
     } else {
       answersBox.appendChild(el("h3", { text: "4. Confirmation" }));
       answersBox.appendChild(el("p", { class: "fs-note", text:
@@ -1186,6 +1220,7 @@
       ["choiceLabel",       "Label above multiple-choice options"],
       ["onetryLabel",       "Label above a one-try choice stop's options"],
       ["pickerLabel",       "Label above a \"choose your path\" picker stop's options"],
+      ["sequenceSubProgress", "\"Sub-task n of total\" counter on a timed-sequence stop ({n}, {total})"],
       ["emptyAnswer",       "Nag when they submit nothing"],
       ["placeholderBadge",  "Banner on a stop with no real answer yet"]
     ]},
@@ -1597,6 +1632,84 @@
       class: "list-add", text: "+ Add option",
       onclick: function () {
         stop.pickerOptions.push({ label: "", description: "", color: "", animated: false, targetStopId: "" });
+        touch();
+        paint();
+      }
+    }));
+
+    return fs;
+  }
+
+  /**
+   * A "sequence" stop's sub-tasks: each with its own label, instructions,
+   * optional image, and a custom countdown length. Same repeatable-rows
+   * pattern as renderPickerOptionsField above, plus a per-row imageField.
+   */
+  function renderSubTasksField(stop) {
+    var fs = el("fieldset", { class: "fieldset" }, el("h3", { text: "Sub-tasks" }));
+    fs.appendChild(el("p", { class: "fs-note", text:
+      "Played in this order. Each one counts down on its own — when it hits 0, the group is auto-advanced to the next, and finishing the last one solves the stop. Purely passive: no button, nothing to answer." }));
+
+    var rows = el("div", { class: "list-rows" });
+
+    function paint() {
+      rows.innerHTML = "";
+      if (!Array.isArray(stop.subTasks)) stop.subTasks = [];
+      var subs = stop.subTasks;
+
+      if (subs.length < 1) {
+        fs.insertBefore(el("div", { class: "warnbox amber" },
+          "Add at least 1 sub-task, or there's nothing for this stop to do."
+        ), rows);
+      } else {
+        var existingWarn = fs.querySelector(".warnbox");
+        if (existingWarn) existingWarn.parentNode.removeChild(existingWarn);
+      }
+
+      subs.forEach(function (sub, i) {
+        var labelInput = el("input", {
+          type: "text", value: sub.label || "", placeholder: "Sub-task label, e.g. \"Russian accent\"",
+          oninput: function () { sub.label = this.value; touch(); }
+        });
+        var instructionsInput = el("textarea", {
+          rows: 2, value: sub.instructions || "",
+          placeholder: "Instructions shown for the whole duration, e.g. \"Talk like a Russian spy until the clock runs out.\"",
+          oninput: function () { sub.instructions = this.value; touch(); }
+        });
+        var durationInput = el("input", {
+          type: "number", min: "1", value: String(sub.durationSeconds == null ? 60 : sub.durationSeconds),
+          style: "width:90px",
+          oninput: function () {
+            sub.durationSeconds = this.value === "" ? 60 : Number(this.value);
+            touch();
+          }
+        });
+
+        var row = el("div", { class: "list-row sub-task-row" },
+          el("div", { class: "sub-task-fields" },
+            el("div", { class: "sub-task-row-1" },
+              labelInput,
+              el("div", { class: "sub-task-duration" }, durationInput, el("span", { text: "seconds" }))
+            ),
+            instructionsInput,
+            imageField("Photo (optional)", function () { return sub.image; },
+                       function (v) { sub.image = v; })
+          ),
+          el("button", {
+            class: "row-del", text: "✕", title: "Remove this sub-task",
+            onclick: function () { subs.splice(i, 1); touch(); paint(); }
+          })
+        );
+        rows.appendChild(row);
+      });
+    }
+    paint();
+    fs.appendChild(rows);
+
+    fs.appendChild(el("button", {
+      class: "list-add", text: "+ Add sub-task",
+      onclick: function () {
+        stop.subTasks.push({ label: "", instructions: "", image: null, durationSeconds: 60 });
         touch();
         paint();
       }

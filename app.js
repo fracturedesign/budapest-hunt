@@ -65,9 +65,13 @@
    * "onetry" — multiple choice with no retry: get it wrong and it's an
    *            outright fail (own failure screen), not "try again". Right
    *            answers work exactly like "choice".
+   * "sequence" — several timed sub-tasks in a row, each with its own
+   *            countdown; purely passive (no button, no answer) — when a
+   *            sub-task's clock hits 0 it auto-advances to the next one,
+   *            and the whole stop is "solved" once the last one finishes.
    * Anything unrecognised falls back to "text".                             */
 
-  var TASK_TYPES = ["text", "choice", "dare", "info", "picker", "onetry"];
+  var TASK_TYPES = ["text", "choice", "dare", "info", "picker", "onetry", "sequence"];
 
   function stopType(stop) {
     var t = stop && stop.type;
@@ -84,6 +88,21 @@
    *  same "degrade gracefully on bad content" convention as choices/hints). */
   function pickerOptions(stop) {
     return (stop && Array.isArray(stop.pickerOptions)) ? stop.pickerOptions : [];
+  }
+
+  /** A "sequence" stop's sub-tasks — each { label, instructions, image,
+   *  durationSeconds }. Missing/malformed is just no sub-tasks, same
+   *  degrade-gracefully convention as pickerOptions()/choices/hints. */
+  function subTasks(stop) {
+    return (stop && Array.isArray(stop.subTasks)) ? stop.subTasks : [];
+  }
+
+  /** A sub-task's countdown length in seconds — a real per-sub-task number
+   *  wins, otherwise a hard-coded 60s so a blank/malformed one still ticks
+   *  down to something instead of instantly completing or hanging forever. */
+  function subTaskDurationSeconds(sub) {
+    var n = sub && Number(sub.durationSeconds);
+    return (typeof n === "number" && !isNaN(n) && n > 0) ? n : 60;
   }
 
   /** Find a stop's array index by id, or -1. Used to jump straight to a
@@ -251,10 +270,12 @@
   }
 
   /** Does this stop count toward the score? An explicit `scored` flag wins;
-   *  otherwise every type scores except "info" (a pure waypoint). */
+   *  otherwise every type scores except "info" (a pure waypoint) and
+   *  "sequence" (a fixed-duration timed activity, not a race to solve). */
   function isScoredStop(stop) {
     if (stop && typeof stop.scored === "boolean") return stop.scored;
-    return stopType(stop) !== "info";
+    var type = stopType(stop);
+    return type !== "info" && type !== "sequence";
   }
 
   /**
@@ -478,6 +499,7 @@
     choiceLabel:      "Pick one",
     onetryLabel:      "Pick one — you only get one shot",
     pickerLabel:      "Choose one",
+    sequenceSubProgress: "Sub-task {n} of {total}",
     dareButton:       "✅ DONE — WE HAVE PROOF",
     infoButton:       "CONTINUE →",
     hintButton:       "💡 Reveal hint {n}  (+{min} min)",
@@ -574,6 +596,8 @@
     typeNeedsAnswer: typeNeedsAnswer,
     hasTravelClue: hasTravelClue,
     pickerOptions: pickerOptions,
+    subTasks: subTasks,
+    subTaskDurationSeconds: subTaskDurationSeconds,
     stopIndexById: stopIndexById,
     isExcludedStop: isExcludedStop,
     effectiveStops: effectiveStops,
@@ -621,7 +645,11 @@
       excludedStopIds: [],  // [stopId] — picker paths not taken this run
       puzzleStartedAt: {},  // { stopId: timestamp } — when the group reached this stop's puzzle screen
       puzzleElapsedMs: {},  // { stopId: ms } — frozen the moment it's solved or skipped
-      msgIdx: { wrong: 0, correct: 0 }
+      msgIdx: { wrong: 0, correct: 0 },
+      // Progress through a "sequence" stop's sub-tasks. Only ever describes
+      // the CURRENT stop — reset the moment stopId no longer matches
+      // wherever the group actually is (see paintSequenceStop()).
+      sequence: null         // { stopId, index, startedAt } | null
     };
   }
 
@@ -723,6 +751,7 @@
     merged.puzzleStartedAt = merged.puzzleStartedAt || {};
     merged.puzzleElapsedMs = merged.puzzleElapsedMs || {};
     merged.msgIdx = merged.msgIdx || { wrong: 0, correct: 0 };
+    merged.sequence = (merged.sequence && typeof merged.sequence === "object") ? merged.sequence : null;
     return merged;
   }
 
@@ -930,6 +959,7 @@
     paintTimer();
     paintTaskTimer();
     paintTaskPoints();
+    tickSequenceCountdown();
   }
 
   function startTimerLoop() {
@@ -1255,6 +1285,7 @@
     $("choiceZone").hidden = true;
     $("btnConfirmDone").hidden = true;
     $("pickerZone").hidden = true;
+    $("sequenceZone").hidden = true;
 
     if (type === "text") {
       $("answerLabel").textContent = stop.answerLabel || t("answerLabel");
@@ -1314,12 +1345,101 @@
         });
       $("pickerZone").hidden = false;
 
+    } else if (type === "sequence") {
+      $("sequenceZone").hidden = false;
+      paintSequenceStop(stop);
+
     } else {
       // dare / info — one button, nothing to get wrong.
       $("btnConfirmDone").textContent = stop.confirmButton ||
         (type === "dare" ? t("dareButton") : t("infoButton"));
       $("btnConfirmDone").hidden = false;
     }
+  }
+
+  /* ==========================================================================
+   * "sequence" — several timed sub-tasks in a row, purely passive: no
+   * button, no answer. Each one counts down on its own; hitting 0 auto-
+   * advances to the next, and the last one finishing solves the stop.
+   * ======================================================================== */
+
+  /**
+   * Entered every time paintPuzzle() lands on a "sequence" stop. Starts
+   * fresh at sub-task 0 the moment the group arrives here for the first
+   * time (or arrives at a DIFFERENT sequence stop); does nothing if
+   * they're just re-rendering the same in-progress sequence (e.g. after
+   * tapping back to re-read the travel clue, or resuming after a reload —
+   * state.sequence.startedAt is wall-clock based, so the countdown picks up
+   * from the real elapsed time either way).
+   */
+  function paintSequenceStop(stop) {
+    if (!state.sequence || state.sequence.stopId !== stop.id) {
+      state.sequence = { stopId: stop.id, index: 0, startedAt: Date.now() };
+      save();
+    }
+    renderCurrentSubTask();
+  }
+
+  function renderCurrentSubTask() {
+    var stop = currentStop();
+    var subs = subTasks(stop);
+    var sub = subs[state.sequence.index];
+    if (!sub) return;   // malformed content — nothing sane to render
+
+    $("sequenceSubEyebrow").textContent =
+      t("sequenceSubProgress", { n: state.sequence.index + 1, total: subs.length });
+    $("sequenceSubLabel").textContent = sub.label || "";
+    $("sequenceSubInstructions").textContent = sub.instructions || "";
+    paintFigure("sequenceSub", sub.image);
+    tickSequenceCountdown();
+  }
+
+  /**
+   * Runs on every global tick (see tick() below) while a "sequence" stop is
+   * showing. Wall-clock based like every other timer in this app, so it
+   * reads correctly the instant the page reopens — including catching up
+   * through any sub-tasks that fully expired while the tab was closed or
+   * backgrounded (advanceSubTask() re-renders, which calls straight back
+   * into this function; recursion depth is bounded by subs.length).
+   */
+  function tickSequenceCountdown() {
+    if (state.view !== "puzzle") return;
+    var stop = currentStop();
+    if (stopType(stop) !== "sequence") return;
+    if (!state.sequence || state.sequence.stopId !== stop.id) return;
+
+    var sub = subTasks(stop)[state.sequence.index];
+    if (!sub) return;
+
+    var durationMs = subTaskDurationSeconds(sub) * 1000;
+    var remaining = Math.max(0, durationMs - (Date.now() - state.sequence.startedAt));
+
+    var box = $("sequenceCountdown");
+    if (box) box.textContent = formatTime(remaining);
+
+    if (remaining <= 0) advanceSubTask();
+  }
+
+  /** A sub-task's clock hit 0: move to the next one, or — if that was the
+   *  last — solve the whole stop, exactly like any other stop finishing. */
+  function advanceSubTask() {
+    var stop = currentStop();
+    var subs = subTasks(stop);
+    var nextIndex = state.sequence.index + 1;
+
+    if (nextIndex >= subs.length) {
+      if (state.solved.indexOf(stop.id) === -1) state.solved.push(stop.id);
+      recordTaskElapsed(stop);
+      state.sequence = null;
+      save();
+      goSolved();
+      return;
+    }
+
+    state.sequence.index = nextIndex;
+    state.sequence.startedAt = Date.now();
+    save();
+    renderCurrentSubTask();
   }
 
   function paintHints() {
@@ -1877,7 +1997,7 @@
   }
 
   ["travelImage", "puzzleImage", "successImage", "startImage", "finishImage",
-   "failureImage", "photoCaptureImg", "selfiePhotoCaptureImg"]
+   "failureImage", "sequenceSubImage", "photoCaptureImg", "selfiePhotoCaptureImg"]
     .forEach(function (id) {
       $(id).addEventListener("click", function () { openLightbox(this.src); });
     });
