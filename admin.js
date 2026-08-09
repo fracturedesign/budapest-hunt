@@ -281,6 +281,7 @@
       if (scoring.decayWindowSeconds < 0) out.push({ level: "red", text: "Decay window can't be negative." });
       if (scoring.hintPointPenalty < 0) out.push({ level: "amber", text: "A negative hint penalty would give points back for using a hint." });
       if (scoring.wrongAnswerPointPenalty < 0) out.push({ level: "amber", text: "A negative wrong-answer penalty would give points back for guessing wrong." });
+      if (scoring.sequenceSkipPointPenalty < 0) out.push({ level: "amber", text: "A negative skip penalty would give points back for skipping a sub-task." });
     }
     return out;
   }
@@ -977,11 +978,14 @@
       ));
     }
 
-    // ---- failure screen (only "onetry" can ever land here)
-    if (type === "onetry") {
+    // ---- failure screen ("onetry"'s wrong guess, or "sequence" if the
+    // group skips its way through the last sub-task)
+    if (type === "onetry" || type === "sequence") {
       main.appendChild(el("fieldset", { class: "fieldset" },
         el("h3", { text: "6. Failure screen" }),
-        el("p", { class: "fs-note", text: "What they see the instant a wrong tap fails this stop outright." }),
+        el("p", { class: "fs-note", text: type === "onetry"
+          ? "What they see the instant a wrong tap fails this stop outright."
+          : "What they see if the group skips their way through the last sub-task instead of finishing it." }),
         field("Failure message", textArea(stop.failureMessage, set("failureMessage"))),
         imageField("Failure photo (optional)", function () { return stop.failureImage; },
                    function (v) { stop.failureImage = v; },
@@ -1097,6 +1101,14 @@
           }, g.wrongAnswerPointPenalty),
           "Subtracted for every wrong guess — a mistyped answer or a wrong multiple-choice tap both count.")
       ));
+      if (HuntLogic.stopType(stop) === "sequence") {
+        fs.appendChild(field("Points lost per skipped sub-task",
+          optionalNumberInput(stop.sequenceSkipPointPenalty, function (v) {
+            if (v === undefined) delete stop.sequenceSkipPointPenalty; else stop.sequenceSkipPointPenalty = v;
+            touch();
+          }, g.sequenceSkipPointPenalty),
+          "Subtracted every time the group taps a sub-task's own skip button instead of waiting it out. Skipping the LAST sub-task doesn't cost points on top of this — it fails the whole stop outright (0 pts), same as a skip elsewhere."));
+      }
     }
 
     return fs;
@@ -1221,6 +1233,7 @@
       ["onetryLabel",       "Label above a one-try choice stop's options"],
       ["pickerLabel",       "Label above a \"choose your path\" picker stop's options"],
       ["sequenceSubProgress", "\"Sub-task n of total\" counter on a timed-sequence stop ({n}, {total})"],
+      ["sequenceSkipButton", "Default skip button text on a timed-sequence stop's sub-tasks"],
       ["emptyAnswer",       "Nag when they submit nothing"],
       ["placeholderBadge",  "Banner on a stop with no real answer yet"]
     ]},
@@ -1454,7 +1467,11 @@
           numberInput(s.wrongAnswerPointPenalty == null ? 10 : s.wrongAnswerPointPenalty,
             function (v) { s.wrongAnswerPointPenalty = v; touch(); }),
           "Subtracted for every wrong guess — mistyped answers and wrong multiple-choice taps both count.")
-      )
+      ),
+      field("Points lost per skipped sub-task",
+        numberInput(s.sequenceSkipPointPenalty == null ? 50 : s.sequenceSkipPointPenalty,
+          function (v) { s.sequenceSkipPointPenalty = v; touch(); }),
+        "Timed-sequence stops only. Subtracted every time the group skips a sub-task instead of waiting it out; skipping the last one fails the whole stop instead (0 pts).")
     ));
 
     var possible = HuntLogic.totalPossiblePoints(draft.stops, draft.config);
@@ -1648,7 +1665,7 @@
   function renderSubTasksField(stop) {
     var fs = el("fieldset", { class: "fieldset" }, el("h3", { text: "Sub-tasks" }));
     fs.appendChild(el("p", { class: "fs-note", text:
-      "Played in this order. Each one counts down on its own — when it hits 0, the group is auto-advanced to the next, and finishing the last one solves the stop. Purely passive: no button, nothing to answer." }));
+      "Played in this order. Each one counts down on its own — when it hits 0, the group is auto-advanced to the next, and finishing the last one solves the stop. Each sub-task also has its own skip button, for a group that wants to move on early: skipping any sub-task except the last one costs points (see \"Points lost per skipped sub-task\" below) and moves to the next; skipping the LAST one fails the whole stop outright, straight to the failure screen." }));
 
     var rows = el("div", { class: "list-rows" });
 
@@ -1684,6 +1701,10 @@
             touch();
           }
         });
+        var skipButtonInput = el("input", {
+          type: "text", value: sub.skipButton || "", placeholder: "Skip button text — leave blank for the default",
+          oninput: function () { sub.skipButton = this.value; touch(); }
+        });
 
         var row = el("div", { class: "list-row sub-task-row" },
           el("div", { class: "sub-task-fields" },
@@ -1692,6 +1713,7 @@
               el("div", { class: "sub-task-duration" }, durationInput, el("span", { text: "seconds" }))
             ),
             instructionsInput,
+            skipButtonInput,
             imageField("Photo (optional)", function () { return sub.image; },
                        function (v) { sub.image = v; })
           ),

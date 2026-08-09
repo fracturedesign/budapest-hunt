@@ -225,6 +225,40 @@ eq("subTaskDurationSeconds falls back to 60 for a zero/negative value",
 eq("subTaskDurationSeconds falls back to 60 for garbage input",
    L.subTaskDurationSeconds({ durationSeconds: "banana" }), 60);
 
+// --- skipping a sub-task early costs points, same shape as hints/wrong answers ---
+eq("sequence-skip penalty fallback", L.resolveScoring({}, {}).sequenceSkipPointPenalty, 50);
+
+const seqCfg = { scoring: { targetSeconds: 100, basePoints: 100, minPoints: 20, decayWindowSeconds: 100,
+                             sequenceSkipPointPenalty: 50 } };
+eq("one skipped sub-task subtracts its cost",
+   L.computeStopPoints({}, seqCfg, 0, 0, false, 0, 1), 50);    // 100 - 50
+eq("two skipped sub-tasks subtract twice",
+   L.computeStopPoints({}, seqCfg, 0, 0, false, 0, 2), 0);     // 100 - 100 -> floored at 0
+eq("skipped sub-tasks can't push a stop below 0",
+   L.computeStopPoints({}, seqCfg, 0, 0, false, 0, 50), 0);
+eq("omitting sequenceSkipCount entirely is the same as 0",
+   L.computeStopPoints({}, seqCfg, 0, 0, false, 0),
+   L.computeStopPoints({}, seqCfg, 0, 0, false, 0, 0));
+
+// stopPointsEarned reads state.sequenceSkips, same convention as state.wrong.
+const seqStop = { id: "seq1", type: "sequence", scored: true };
+const seqState = L.freshState();
+seqState.solved = ["seq1"];
+seqState.puzzleElapsedMs = { seq1: 0 };
+seqState.sequenceSkips = { seq1: 1 };
+const seqSummary = L.stopPointsEarned(seqStop, seqState, seqCfg);
+eq("summary reports the sub-task skip count", seqSummary.sequenceSkipCount, 1);
+eq("earned reflects the skip penalty", seqSummary.earned, 50);   // 100 - 50
+
+// Skipping the LAST sub-task fails the whole stop instead — same treatment
+// stopPointsEarned already gives a failed "onetry" stop: always 0.
+const seqFailState = L.freshState();
+seqFailState.failed = ["seq1"];
+seqFailState.puzzleElapsedMs = { seq1: 0 };
+const seqFailSummary = L.stopPointsEarned(seqStop, seqFailState, seqCfg);
+ok("a sequence stop failed via the last sub-task's skip is flagged failed", seqFailSummary.failed);
+eq("a failed sequence stop earns 0 regardless of earlier skips", seqFailSummary.earned, 0);
+
 /* ═══════════════════════════════════════════════════ 3c. LABELS ══ */
 section("3c. Labels & tokens");
 

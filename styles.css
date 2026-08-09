@@ -775,6 +775,8 @@ button, input { -webkit-tap-highlight-color: transparent; }
   letter-spacing: .02em;
 }
 
+.sequence-skip-btn { margin-top: 22px; }
+
 /* ──────────────────────────────────────────── locked-until-photo state ── */
 
 /* Applied to whichever "move on" control a stop uses, while it still needs

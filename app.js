@@ -335,20 +335,24 @@
       decayWindowSeconds: numberOr(stop && stop.decayWindowSeconds, g.decayWindowSeconds, 300),
       hintPointPenalty:   numberOr(stop && stop.hintPointPenalty,   g.hintPointPenalty,   20),
       wrongAnswerPointPenalty:
-                          numberOr(stop && stop.wrongAnswerPointPenalty, g.wrongAnswerPointPenalty, 10)
+                          numberOr(stop && stop.wrongAnswerPointPenalty, g.wrongAnswerPointPenalty, 10),
+      sequenceSkipPointPenalty:
+                          numberOr(stop && stop.sequenceSkipPointPenalty, g.sequenceSkipPointPenalty, 50)
     };
   }
 
   /**
    * Points for one stop, given how long it took, how many hints were used,
-   * and how many wrong answers were submitted. Full marks at or under the
-   * target time; a straight-line decay down to `minPoints` over
-   * `decayWindowSeconds` after that, then it holds at the floor. Each hint
-   * and each wrong answer subtracts its own flat penalty on top — a wrong
-   * multiple-choice tap counts the same as a wrong typed answer. A skip is
-   * always 0 — the one outcome that's worse than just being slow.
+   * how many wrong answers were submitted, and — for a "sequence" stop —
+   * how many of its sub-tasks were skipped early. Full marks at or under
+   * the target time; a straight-line decay down to `minPoints` over
+   * `decayWindowSeconds` after that, then it holds at the floor. Each hint,
+   * each wrong answer, and each skipped sub-task subtracts its own flat
+   * penalty on top — a wrong multiple-choice tap counts the same as a
+   * wrong typed answer. A skip (or a "onetry"/sequence fail) is always 0 —
+   * the one outcome that's worse than just being slow.
    */
-  function computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped, wrongCount) {
+  function computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped, wrongCount, sequenceSkipCount) {
     if (skipped) return 0;
     var s = resolveScoring(config, stop);
     var elapsed = Math.max(0, Number(elapsedSeconds) || 0);
@@ -366,6 +370,7 @@
 
     points -= Math.max(0, hintCount || 0) * s.hintPointPenalty;
     points -= Math.max(0, wrongCount || 0) * s.wrongAnswerPointPenalty;
+    points -= Math.max(0, sequenceSkipCount || 0) * s.sequenceSkipPointPenalty;
     return Math.round(Math.max(0, Math.min(s.basePoints, points)));
   }
 
@@ -389,12 +394,13 @@
     var elapsedSeconds = elapsedMsVal != null ? elapsedMsVal / 1000 : 0;
     var hintCount = ((state.hintsUsed || {})[stop.id] || []).length;
     var wrongCount = (state.wrong || {})[stop.id] || 0;
-    // A failed "onetry" stop scores 0, same treatment as a skip.
-    var earned = computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped || failed, wrongCount);
+    var sequenceSkipCount = (state.sequenceSkips || {})[stop.id] || 0;
+    // A failed "onetry"/sequence stop scores 0, same treatment as a skip.
+    var earned = computeStopPoints(stop, config, elapsedSeconds, hintCount, skipped || failed, wrongCount, sequenceSkipCount);
 
     return {
       possible: scoring.basePoints, earned: earned, reached: true, skipped: skipped, failed: failed,
-      elapsedSeconds: elapsedSeconds, hintCount: hintCount, wrongCount: wrongCount
+      elapsedSeconds: elapsedSeconds, hintCount: hintCount, wrongCount: wrongCount, sequenceSkipCount: sequenceSkipCount
     };
   }
 
@@ -500,6 +506,7 @@
     onetryLabel:      "Pick one — you only get one shot",
     pickerLabel:      "Choose one",
     sequenceSubProgress: "Sub-task {n} of {total}",
+    sequenceSkipButton:  "Skip this one →",
     dareButton:       "✅ DONE — WE HAVE PROOF",
     infoButton:       "CONTINUE →",
     hintButton:       "💡 Reveal hint {n}  (+{min} min)",
@@ -641,10 +648,12 @@
       answers: {},          // { stopId: acceptedAnswerText }
       solved: [],           // [stopId]
       skipped: [],          // [stopId]
-      failed: [],           // [stopId] — a "onetry" stop's wrong first (only) guess
+      failed: [],           // [stopId] — a "onetry" stop's wrong first (only) guess, or a
+                             //            "sequence" stop whose last sub-task was skipped
       excludedStopIds: [],  // [stopId] — picker paths not taken this run
       puzzleStartedAt: {},  // { stopId: timestamp } — when the group reached this stop's puzzle screen
       puzzleElapsedMs: {},  // { stopId: ms } — frozen the moment it's solved or skipped
+      sequenceSkips: {},    // { stopId: count } — sub-tasks skipped early (not the last one)
       msgIdx: { wrong: 0, correct: 0 },
       // Progress through a "sequence" stop's sub-tasks. Only ever describes
       // the CURRENT stop — reset the moment stopId no longer matches
@@ -750,6 +759,7 @@
     merged.excludedStopIds = Array.isArray(merged.excludedStopIds) ? merged.excludedStopIds : [];
     merged.puzzleStartedAt = merged.puzzleStartedAt || {};
     merged.puzzleElapsedMs = merged.puzzleElapsedMs || {};
+    merged.sequenceSkips = merged.sequenceSkips || {};
     merged.msgIdx = merged.msgIdx || { wrong: 0, correct: 0 };
     merged.sequence = (merged.sequence && typeof merged.sequence === "object") ? merged.sequence : null;
     return merged;
@@ -1268,7 +1278,8 @@
     var elapsedSec = (Date.now() - startedAt) / 1000;
     var hintCount = (state.hintsUsed[stop.id] || []).length;
     var wrongCount = state.wrong[stop.id] || 0;
-    var points = computeStopPoints(stop, C, elapsedSec, hintCount, false, wrongCount);
+    var sequenceSkipCount = state.sequenceSkips[stop.id] || 0;
+    var points = computeStopPoints(stop, C, elapsedSec, hintCount, false, wrongCount, sequenceSkipCount);
 
     box.hidden = false;
     box.textContent = t("taskPoints", { points: points, possible: scoring.basePoints });
@@ -1391,6 +1402,7 @@
     $("sequenceSubLabel").textContent = sub.label || "";
     $("sequenceSubInstructions").textContent = sub.instructions || "";
     paintFigure("sequenceSub", sub.image);
+    $("sequenceSkipButton").textContent = sub.skipButton || t("sequenceSkipButton");
     tickSequenceCountdown();
   }
 
@@ -1440,6 +1452,37 @@
     state.sequence.startedAt = Date.now();
     save();
     renderCurrentSubTask();
+  }
+
+  /**
+   * The group taps a sub-task's own skip button instead of waiting it out.
+   * Skipping any sub-task except the last one costs points and moves on to
+   * the next one, same shape as advanceSubTask() but starting fresh at 0
+   * hint/wrong-answer style penalties rather than a clean auto-advance.
+   * Skipping the LAST sub-task means the whole stop is never actually
+   * finished — that's a fail, not a skip, so it goes to the same failure
+   * screen a "onetry" stop's wrong guess does.
+   */
+  function skipSubTask() {
+    var stop = currentStop();
+    var subs = subTasks(stop);
+    var isLastSubTask = state.sequence.index >= subs.length - 1;
+
+    if (isLastSubTask) {
+      if (state.failed.indexOf(stop.id) === -1) state.failed.push(stop.id);
+      recordTaskElapsed(stop);
+      state.sequence = null;
+      save();
+      goFailed();
+      return;
+    }
+
+    state.sequenceSkips[stop.id] = (state.sequenceSkips[stop.id] || 0) + 1;
+    state.sequence.index += 1;
+    state.sequence.startedAt = Date.now();
+    save();
+    renderCurrentSubTask();
+    paintTaskPoints();   // the penalty should land the instant it's incurred
   }
 
   function paintHints() {
@@ -2015,6 +2058,7 @@
   $("btnSkip").addEventListener("click", skipStop);
   $("btnNext").addEventListener("click", advance);
   $("btnFailedNext").addEventListener("click", advance);
+  $("sequenceSkipButton").addEventListener("click", skipSubTask);
 
   /* ---- photo capture -------------------------------------------------------
    * TWO hidden file inputs, both feeding the same handler:
