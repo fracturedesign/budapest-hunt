@@ -694,6 +694,16 @@ button, input { -webkit-tap-highlight-color: transparent; }
 
 .btn-small { min-height: 48px; font-size: 15px; font-weight: 600; letter-spacing: 0; }
 
+/* Deliberately quiet — always present, but shouldn't compete visually with
+ * the actual answer/confirm controls above it. See jumpSkipStop() in app.js. */
+.btn-jump-skip {
+  margin-top: 18px;
+  border-color: transparent;
+  color: var(--text-dim);
+  opacity: .7;
+}
+.btn-jump-skip:active { opacity: 1; }
+
 /* ─────────────────────────────────────────────────── multiple choice ── */
 
 .choice-zone { margin-bottom: 18px; }

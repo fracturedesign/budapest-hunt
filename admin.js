@@ -1223,6 +1223,7 @@
       ["hintZoneLabel",    "\"HINTS\" heading above the hint buttons"],
       ["hintTag",        "Label above a revealed hint"],
       ["skipButton",     "Give up on a stop"],
+      ["jumpSkipButton", "Always-available \"skip this task, no penalty\" button, on every stop"],
       ["taskTimerTarget", "Target-time readout next to the per-stop clock"],
       ["taskPoints",      "Live points preview ({points}, {possible})"]
     ]},

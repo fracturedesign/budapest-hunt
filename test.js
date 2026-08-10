@@ -166,6 +166,18 @@ eq("effectiveStops drops the excluded one", effective.length, 3);
 ok("effectiveStops keeps the chosen path",
    effective.some(s => s.id === "path-a") && !effective.some(s => s.id === "path-b"));
 
+// jumpSkipStop() (the always-available "skip this task, no penalty" button)
+// reuses this exact same excludedStopIds mechanism — a stop the group
+// manually skips past costs nothing, same as an untaken picker branch.
+const manualSkipCfg = { scoring: { basePoints: 100 } };
+const manualSkipStops = [{ id: "a", scored: true }, { id: "b", scored: true }, { id: "c", scored: true }];
+const manualSkipState = { excludedStopIds: ["b"], solved: ["a", "c"],
+                           puzzleElapsedMs: { a: 0, c: 0 } };
+eq("a manually-skipped stop doesn't count toward the possible total",
+   L.totalPossiblePoints(L.effectiveStops(manualSkipStops, manualSkipState), manualSkipCfg), 200);
+eq("a manually-skipped stop doesn't count toward the earned total either",
+   L.totalEarnedPoints(manualSkipState, L.effectiveStops(manualSkipStops, manualSkipState), manualSkipCfg), 200);
+
 section("3b4. One-try choice (wrong first tap fails outright)");
 
 eq("onetry recognised as a type", L.stopType({ type: "onetry" }), "onetry");

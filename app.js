@@ -114,16 +114,20 @@
     return -1;
   }
 
-  /** Is this stop excluded from the current playthrough? A picker option
-   *  NOT chosen gets its target stop id added to state.excludedStopIds —
-   *  only one path through a picker is ever played in one run. */
+  /** Is this stop excluded from the current playthrough? Either a picker
+   *  option NOT chosen (only one path through a picker is ever played in
+   *  one run), or a stop the group manually skipped past with the
+   *  "skip this task" button — a real-world contingency (venue closed,
+   *  whatever), not a difficulty escape hatch, so it costs nothing: not
+   *  time, not points, just quietly out of this run same as an untaken
+   *  picker branch. Both land in the same state.excludedStopIds list. */
   function isExcludedStop(stop, state) {
     return !!(stop && state && state.excludedStopIds &&
               state.excludedStopIds.indexOf(stop.id) !== -1);
   }
 
   /** The stops that are actually in play this run — every stop minus
-   *  whichever picker paths weren't taken. */
+   *  whichever picker paths weren't taken or were manually skipped. */
   function effectiveStops(stops, state) {
     return (stops || []).filter(function (s) { return !isExcludedStop(s, state); });
   }
@@ -518,6 +522,7 @@
     hintZoneLabel:    "Hints",
     hintTag:          "Hint {n}",
     skipButton:       "Give up on this one (+{min} min penalty)",
+    jumpSkipButton:   "⏭ Skip this task — no penalty",
     backToClue:       "← re-read the travel clue",
     emptyAnswer:      "Type something first.",
     placeholderBadge: "⚠️ Placeholder stop — the real answer hasn't been written yet, so anything you type will be accepted.",
@@ -650,7 +655,8 @@
       skipped: [],          // [stopId]
       failed: [],           // [stopId] — a "onetry" stop's wrong first (only) guess, or a
                              //            "sequence" stop whose last sub-task was skipped
-      excludedStopIds: [],  // [stopId] — picker paths not taken this run
+      excludedStopIds: [],  // [stopId] — picker paths not taken this run, or a
+                             //            stop the group manually skipped past
       puzzleStartedAt: {},  // { stopId: timestamp } — when the group reached this stop's puzzle screen
       puzzleElapsedMs: {},  // { stopId: ms } — frozen the moment it's solved or skipped
       sequenceSkips: {},    // { stopId: count } — sub-tasks skipped early (not the last one)
@@ -1149,6 +1155,7 @@
     $("puzzleText").textContent = stop.puzzle || "";
     $("btnBackToClue").textContent = t("backToClue");
     $("btnBackToClue").hidden = !hasTravelClue(stop);
+    $("btnJumpSkip").textContent = t("jumpSkipButton");
     paintFigure("puzzle", stop.puzzleImage);
 
     $("placeholderBadge").textContent = t("placeholderBadge");
@@ -1670,6 +1677,28 @@
     goSolved(true);
   }
 
+  /**
+   * The always-available "skip this task entirely" button — a real-world
+   * contingency (venue closed, whatever), not the difficulty escape hatch
+   * skipStop() above is. Costs nothing: the stop is excluded from this
+   * playthrough the same way an untaken picker path is, so it never touches
+   * the time penalty (that only counts state.skipped) or the STAG score
+   * (excluded stops aren't in effectiveStops(), which both the possible and
+   * earned totals are computed from) — not a 0, just not counted at all.
+   */
+  function jumpSkipStop() {
+    if (!confirm("Skip this task and move straight to the next one?\n\n" +
+                  "No time or points penalty either way — only use this if something's " +
+                  "actually stopping the group from doing it (closed venue, etc).")) return;
+
+    var stop = currentStop();
+    if (state.excludedStopIds.indexOf(stop.id) === -1) state.excludedStopIds.push(stop.id);
+    // Clear any in-progress sub-task countdown so it can't linger stale.
+    if (state.sequence && state.sequence.stopId === stop.id) state.sequence = null;
+    save();
+    advance();
+  }
+
   /** Freeze this stop's task-timer reading the moment it's solved or skipped,
    *  so revisiting the solved screen later (e.g. after a reload) always shows
    *  the same number instead of one that kept climbing in the background. */
@@ -2059,6 +2088,7 @@
   $("btnNext").addEventListener("click", advance);
   $("btnFailedNext").addEventListener("click", advance);
   $("sequenceSkipButton").addEventListener("click", skipSubTask);
+  $("btnJumpSkip").addEventListener("click", jumpSkipStop);
 
   /* ---- photo capture -------------------------------------------------------
    * TWO hidden file inputs, both feeding the same handler:

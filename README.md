@@ -375,6 +375,21 @@ The "give up" button only appears once the group has revealed **every** hint on
 that stop **and** been wrong `skipAfterWrongAnswers` times — so it can't be
 stumbled into, but nobody's night ends stuck on a puzzle because a statue moved.
 
+### "Skip this task — no penalty"
+
+A second, separate skip control, always visible at the bottom of every stop
+(any type) from the moment they arrive — no hints or wrong answers required
+first. This one is for real-world contingencies, not difficulty: a venue's
+closed, a location's unreachable, whatever's actually stopping the group from
+doing that specific stop. Tapping it (after a confirmation prompt, so it can't
+be fat-fingered mid-task) jumps straight to the next stop and costs **nothing**
+— no time penalty, no points lost. The stop is excluded from that playthrough
+entirely, the same way an untaken picker branch is: it drops out of "Stop N of
+M", isn't counted in the STAG score's possible-points total, and doesn't
+appear in the finish-screen recap. The button's text is editable under
+"Buttons & labels" (`jumpSkipButton`); there's no per-stop override since it's
+meant to behave identically everywhere.
+
 ### Adding, removing or reordering stops
 
 Add or delete objects in the `stops` array. The progress counter, "Stop N of M"
@@ -387,7 +402,7 @@ stop's `id` unique.
 node test.js
 ```
 
-488 checks covering answer normalisation, matching, task types (including the
+506 checks covering answer normalisation, matching, task types (including the
 picker/branching logic, the one-try-choice fail path, and the timed-sequence
 auto-advance/skip-penalty), label tokens, the timer (including the independent
 show/hide toggle), penalty maths, the skip gate, the points/decay curve,

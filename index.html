@@ -227,6 +227,11 @@
     <button class="btn btn-danger-ghost" id="btnSkip" hidden></button>
 
     <button class="btn btn-ghost btn-small" id="btnBackToClue">← re-read the travel clue</button>
+
+    <!-- Always available, on every task type — a real-world contingency
+         (venue closed, whatever), not a difficulty escape hatch. No time or
+         points penalty either way; see jumpSkipStop() in app.js. -->
+    <button class="btn btn-ghost btn-small btn-jump-skip" id="btnJumpSkip" type="button">⏭ Skip this task — no penalty</button>
   </section>
 
   <!-- ════════════════════════════════════════════════════════════════
