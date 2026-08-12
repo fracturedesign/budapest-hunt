@@ -673,7 +673,7 @@
 
     // final selfie screen (only shown if config.finalSelfie is set up)
     finalSelfieTitle:  "One last thing",
-    finalSelfiePrompt: "Get the whole group in frame — this is the one that ends up in the wedding slideshow.",
+    finalSelfiePrompt: "Get the whole group in frame — this is the one everyone will look back on.",
     finalSelfiePhotoLabel: "📸 Group selfie",
     finalSelfieButton: "CONTINUE TO RESULTS →",
     thenNowTitle:      "🤳 Then & Now",
