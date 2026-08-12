@@ -557,7 +557,7 @@
    */
   var DEFAULT_SCORING_EXPLAINER = [
     "There are {totalPoints} points up for grabs across this hunt.",
-    "Each stop has its own clock, starting the moment you arrive — not while you're still walking there.",
+    "Each task has its own clock, starting the moment you arrive — not while you're still walking there.",
     "Solve within the target time (default {target}) for full points; take longer and they decay down to a floor.",
     "Every hint you reveal costs points too, on top of the extra minutes it adds.",
     "Every wrong guess costs points too — think before you tap or type.",
@@ -596,7 +596,7 @@
     hintCostNote:     "",   // blank by default — hides itself
     hintCostNoteFree: "",   // blank by default — hides itself
     factGroom:        "Groom",
-    factStops:        "Stops",
+    factStops:        "Tasks",
     factDuration:     "Time",
     factDistance:     "Walking",
 
@@ -629,7 +629,7 @@
     jumpSkipButton:   "⏭ Skip this task — no penalty",
     backToClue:       "← re-read the travel clue",
     emptyAnswer:      "Type something first.",
-    placeholderBadge: "⚠️ Placeholder stop — the real answer hasn't been written yet, so anything you type will be accepted.",
+    placeholderBadge: "⚠️ Placeholder task — the real answer hasn't been written yet, so anything you type will be accepted.",
     taskTimerTarget:  "🎯 target < {target}",
     taskPoints:       "🏆 {points}/{possible}",
     photoCaptureLabel: "📸 Photo proof",
@@ -657,7 +657,7 @@
     scoreFinalLabel:  "Final time",
     scoreRawLabel:    "On the clock",
     scorePenaltyLabel:"Penalties",
-    scoreStopsLabel:  "Stops solved",
+    scoreStopsLabel:  "Tasks solved",
     scoreHintsLabel:  "Hints burned",
     scoreWrongLabel:  "Wrong guesses",
     scoreGirlsMetLabel:"Girls met",
@@ -681,8 +681,8 @@
     thenNowSelfieLabel:"The group, at the end",
 
     // hud
-    hudProgress:      "Stop {n} of {total}",
-    hudFinished:      "Finished · {total} stops"
+    hudProgress:      "Task {n} of {total}",
+    hudFinished:      "Finished · {total} tasks"
   };
 
   /** Fill {token} placeholders from a values object. */
@@ -2254,7 +2254,7 @@
   // The ⟲ in the HUD — the only way to abandon a run in progress.
   // Double-confirmed on purpose: an accidental tap here would be a disaster.
   $("btnHudReset").addEventListener("click", function () {
-    if (!confirm("Abandon this run and start over from Stop 1?\n\nThe clock resets too.")) return;
+    if (!confirm("Abandon this run and start over from Task 1?\n\nThe clock resets too.")) return;
     if (!confirm("Really? Everything goes. Last chance.")) return;
     resetToStart();
   });

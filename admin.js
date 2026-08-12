@@ -200,7 +200,7 @@
 
     if (needsAnswer) {
       if (isPlaceholder(stop)) {
-        out.push({ level: "amber", text: "No real answer yet — this stop accepts anything typed into it." });
+        out.push({ level: "amber", text: "No real answer yet — this task accepts anything typed into it." });
       }
       // Rows that are entirely blank are just unfilled — the player never sees
       // them and export drops them, so they're not worth shouting about. But a
@@ -222,14 +222,14 @@
       if (choices.length < 2) {
         out.push({ level: "red", text: kindLabel + " needs at least two options." });
       }
-      // The correct answer has to actually be one of the buttons, or the stop
+      // The correct answer has to actually be one of the buttons, or the task
       // is unwinnable — the classic way to break a choice question. Doubly
-      // important for "onetry": an unwinnable stop there fails EVERY group,
+      // important for "onetry": an unwinnable task there fails EVERY group,
       // every time, with no way to notice until the event.
       if (choices.length && !isPlaceholder(stop)) {
         var reachable = choices.some(function (c) { return HuntLogic.checkAnswer(stop, c).ok; });
         if (!reachable) {
-          out.push({ level: "red", text: "None of the options match an accepted answer — this stop can't be solved." });
+          out.push({ level: "red", text: "None of the options match an accepted answer — this task can't be solved." });
         }
       }
     }
@@ -246,13 +246,13 @@
           out.push({ level: "red", text: "Option " + n + " has no label." });
         }
         if (!opt.targetStopId) {
-          out.push({ level: "red", text: "Option " + n + " doesn't point to a stop yet." });
+          out.push({ level: "red", text: "Option " + n + " doesn't point to a task yet." });
         } else if (opt.targetStopId === stop.id) {
-          out.push({ level: "red", text: "Option " + n + " points at this same stop — that would jump right back here." });
+          out.push({ level: "red", text: "Option " + n + " points at this same task — that would jump right back here." });
         } else if (HuntLogic.stopIndexById(draft.stops, opt.targetStopId) === -1) {
           out.push({ level: "red", text: 'Option ' + n + ' points to "' + opt.targetStopId + '", which doesn\'t exist (renamed or deleted?).' });
         } else if (seenTargets[opt.targetStopId]) {
-          out.push({ level: "amber", text: "Two options both point to the same stop — one of them is redundant." });
+          out.push({ level: "amber", text: "Two options both point to the same task — one of them is redundant." });
         }
         seenTargets[opt.targetStopId] = true;
       });
@@ -296,7 +296,7 @@
       if (scoring.minPoints < 0) out.push({ level: "red", text: "Minimum points can't be negative." });
       if (scoring.minPoints > scoring.basePoints) {
         out.push({ level: "red", text: "Minimum points (" + scoring.minPoints + ") is higher than max points (" +
-          scoring.basePoints + ") — this stop would score MORE the slower it's solved." });
+          scoring.basePoints + ") — this task would score MORE the slower it's solved." });
       }
       if (scoring.decayWindowSeconds < 0) out.push({ level: "red", text: "Decay window can't be negative." });
       if (scoring.hintPointPenalty < 0) out.push({ level: "amber", text: "A negative hint penalty would give points back for using a hint." });
@@ -324,7 +324,7 @@
     }, 0) + (draft.config.startImage ? 1 : 0) + (draft.config.finishImage ? 1 : 0);
     var size = totalBytes();
     $("topStats").textContent =
-      stops + " stops · " + imgs + " photos · " + fmtBytes(size) +
+      stops + " tasks · " + imgs + " photos · " + fmtBytes(size) +
       (todo ? " · " + todo + " need content" : " · all filled in");
   }
 
@@ -429,7 +429,7 @@
   }
 
   function deleteStop(i) {
-    var name = draft.stops[i].name || "this stop";
+    var name = draft.stops[i].name || "this task";
     if (!confirm('Delete "' + name + '"?\n\nThis can\'t be undone (but your last export still has it).')) return;
     draft.stops.splice(i, 1);
     if (!draft.stops.length) {
@@ -444,7 +444,7 @@
     return {
       id: uniqueId("new-stop"),
       verifyNote: "",
-      name: "New stop",
+      name: "New task",
       teaser: "",
       travelClue: "",
       arrivalNote: "",
@@ -740,8 +740,8 @@
       return function (v) { stop[key] = v; touch(); };
     };
 
-    main.appendChild(el("h2", { class: "panel-title", text: "Stop " + (index + 1) + " — " + (stop.name || "untitled") }));
-    main.appendChild(el("p", { class: "panel-sub", text: "Players see this as stop " + (index + 1) + " of " + draft.stops.length + "." }));
+    main.appendChild(el("h2", { class: "panel-title", text: "Task " + (index + 1) + " — " + (stop.name || "untitled") }));
+    main.appendChild(el("p", { class: "panel-sub", text: "Players see this as task " + (index + 1) + " of " + draft.stops.length + "." }));
 
     // Problems live in their own container so they can be repainted on every
     // keystroke (via refreshProblems) without rebuilding the form and stealing
@@ -756,7 +756,7 @@
         field("Name", textInput(stop.name, function (v) {
           stop.name = v; touch();
           // keep the heading in sync without losing focus
-          main.querySelector(".panel-title").textContent = "Stop " + (index + 1) + " — " + (v || "untitled");
+          main.querySelector(".panel-title").textContent = "Task " + (index + 1) + " — " + (v || "untitled");
         }), "Organiser-facing, and shown as the heading on the puzzle screen."),
         field("id", textInput(stop.id, function (v) { stop.id = v.trim(); touch(); }),
               "Used to save progress. Must be unique. Avoid changing it mid-event.")
@@ -771,10 +771,10 @@
       text:   "Players type an answer into a box. The classic.",
       choice: "Players tap one of several options. Good when the answer is hard to spell, or for an \"odd one out\".",
       dare:   "Nothing to answer — one button confirms they did the thing. Can't be failed, so no hints penalty trap and no give-up button.",
-      info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues straight to the next stop — no \"correct!\" screen in between.",
+      info:   "No challenge at all. A story beat, a warning, or a waypoint. One button continues straight to the next task — no \"correct!\" screen in between.",
       picker: "Players tap one of several options to pick which task comes next, jumping straight to it by id. Not a quiz — there's no right answer, just a path. Whichever options they didn't pick are excluded from the rest of this playthrough entirely.",
-      onetry: "Multiple choice with no retry: get it wrong and it's an outright fail, straight to its own failure screen — no shake-and-try-again, no hints escape hatch. Right on the first tap works exactly like a normal Multiple choice stop.",
-      sequence: "Several timed sub-tasks in a row (e.g. \"do a Russian accent for 15 minutes, then a British one\"). Purely passive — no button, nothing to answer. Each sub-task counts down on its own clock; hitting 0 auto-advances to the next one, and finishing the last one solves the stop like normal."
+      onetry: "Multiple choice with no retry: get it wrong and it's an outright fail, straight to its own failure screen — no shake-and-try-again, no hints escape hatch. Right on the first tap works exactly like a normal Multiple choice task.",
+      sequence: "Several timed sub-tasks in a row (e.g. \"do a Russian accent for 15 minutes, then a British one\"). Purely passive — no button, nothing to answer. Each sub-task counts down on its own clock; hitting 0 auto-advances to the next one, and finishing the last one solves the task like normal."
     };
     main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "Task type" }),
@@ -816,14 +816,14 @@
     var photoOn = HuntLogic.wantsPhotoCapture(stop);
     var fsPhoto = el("fieldset", { class: "fieldset" },
       el("h3", { text: "Photo capture" }),
-      field("Let players take a photo on this stop", selectInput(String(photoOn), [
+      field("Let players take a photo on this task", selectInput(String(photoOn), [
         { value: "true",  label: "Yes — show a \"take a photo\" button" },
         { value: "false", label: "No" }
       ], function (v) {
         stop.photoCapture = (v === "true");
         touch();
         renderEditor();
-      }), "On by default for Dare stops, off for everything else — but works on any type. " +
+      }), "On by default for Dare tasks, off for everything else — but works on any type. " +
           "The photo saves to the player's camera roll automatically (that's just how phone " +
           "cameras work) and a small copy is kept in their browser to show a \"got it\" " +
           "preview and a recap at the finish screen. Nothing is uploaded anywhere — there's " +
@@ -842,7 +842,7 @@
         }),
         required
           ? "The proceed button stays greyed out until a photo is attached — on every task type, and it can't be bypassed with the keyboard either."
-          : "Players can finish this stop without taking a photo."));
+          : "Players can finish this task without taking a photo."));
       fsPhoto.appendChild(field("\"Take a photo\" button text",
         textInput(stop.takePhotoButton, function (v) { stop.takePhotoButton = v; touch(); }),
         "Leave blank for the game-wide default."));
@@ -859,7 +859,7 @@
     var travels = HuntLogic.hasTravelClue(stop);
     var fsTravel = el("fieldset", { class: "fieldset" },
       el("h3", { text: "1. Travel clue" }),
-      field("Does this stop need a travel clue?", selectInput(String(travels), [
+      field("Does this task need a travel clue?", selectInput(String(travels), [
         { value: "true",  label: "Yes — the group has to walk/find somewhere first" },
         { value: "false", label: "No — solved right where they already are (skip this screen)" }
       ], function (v) {
@@ -868,7 +868,7 @@
         renderEditor();
       }), travels
         ? "The cryptic directions that get them walking. Blank lines become paragraph breaks."
-        : "The group goes straight from the previous stop's finish screen into this puzzle — no clue, no \"We're here\" button.")
+        : "The group goes straight from the previous task's finish screen into this puzzle — no clue, no \"We're here\" button.")
     );
     if (travels) {
       fsTravel.appendChild(field("Clue text", textArea(stop.travelClue, set("travelClue"), { tall: true })));
@@ -919,7 +919,7 @@
 
     if (isChoiceLike) {
       var placeholderNote = isPlaceholder(stop)
-        ? "⚠️ No real answers yet, so this stop accepts anything and shows an amber banner in the game. Add one below to make it a real puzzle."
+        ? "⚠️ No real answers yet, so this task accepts anything and shows an amber banner in the game. Add one below to make it a real puzzle."
         : "Matching already ignores capitals, accents (sör = sor), punctuation and extra spaces — you don't need to list those variants.";
 
       answersBox.appendChild(el("h3", { text: "4. Accepted answers" }));
@@ -944,7 +944,7 @@
           ? "Must match one of the options above (matching is forgiving about case and accents)."
           : "Any one of these unlocks the next clue.",
         { addLabel: "+ Add accepted answer", placeholder: "e.g. tongue",
-          emptyText: "No answers — this stop will accept anything." }));
+          emptyText: "No answers — this task will accept anything." }));
 
       answersBox.appendChild(field(
         (type === "choice" || type === "onetry") ? "\"Pick one\" label" : "Answer box label",
@@ -968,7 +968,7 @@
       answersBox.appendChild(el("p", { class: "fs-note", text:
         type === "dare"
           ? "A dare can't be got wrong — one button says they did it. Honour system, which is the right system for a bachelor party."
-          : "Info stops have nothing to solve. One button moves the group on." }));
+          : "Info tasks have nothing to solve. One button moves the group on." }));
       answersBox.appendChild(field("Button text", textInput(stop.confirmButton, set("confirmButton")),
         "Leave blank for the game-wide default (" +
         (type === "dare" ? "\"✅ DONE — WE HAVE PROOF\"" : "\"CONTINUE →\"") + ")."));
@@ -1004,7 +1004,7 @@
       main.appendChild(el("fieldset", { class: "fieldset" },
         el("h3", { text: "6. Failure screen" }),
         el("p", { class: "fs-note", text: type === "onetry"
-          ? "What they see the instant a wrong tap fails this stop outright."
+          ? "What they see the instant a wrong tap fails this task outright."
           : "What they see if the group skips their way through the last sub-task instead of finishing it." }),
         field("Failure message", textArea(stop.failureMessage, set("failureMessage"))),
         imageField("Failure photo (optional)", function () { return stop.failureImage; },
@@ -1017,7 +1017,7 @@
                 "Default \"Nope. That was your one shot.\"")
         ),
         field("\"Next\" button text", textInput(stop.nextButton, set("nextButton")),
-              "Leave blank for the game-wide default. Shared with the success screen's \"Next\" button above — there's only one stop to move on from either way.")
+              "Leave blank for the game-wide default. Shared with the success screen's \"Next\" button above — there's only one task to move on from either way.")
       ));
     }
 
@@ -1030,12 +1030,12 @@
 
     // ---- danger zone
     main.appendChild(el("fieldset", { class: "fieldset" },
-      el("h3", { text: "This stop" }),
+      el("h3", { text: "This task" }),
       el("div", { class: "imgbtns" },
         el("button", { class: "imgbtn", text: "⧉ Duplicate", onclick: function () { duplicateStop(index); } }),
         el("button", { class: "imgbtn", text: "↑ Move up", onclick: function () { moveStop(index, -1); } }),
         el("button", { class: "imgbtn", text: "↓ Move down", onclick: function () { moveStop(index, 1); } }),
-        el("button", { class: "imgbtn danger", text: "✕ Delete stop", onclick: function () { deleteStop(index); } })
+        el("button", { class: "imgbtn danger", text: "✕ Delete task", onclick: function () { deleteStop(index); } })
       )
     ));
   }
@@ -1067,7 +1067,7 @@
       }), "The clock, if shown, starts the moment the group reaches this puzzle screen — never during the walk to get here."),
 
       field("Include in scoring", selectInput(String(scoredNow), [
-        { value: "true",  label: "Yes — award points for this stop" },
+        { value: "true",  label: "Yes — award points for this task" },
         { value: "false", label: "No — exclude from the STAG score entirely" }
       ], function (v) {
         stop.scored = (v === "true");
@@ -1127,7 +1127,7 @@
             if (v === undefined) delete stop.sequenceSkipPointPenalty; else stop.sequenceSkipPointPenalty = v;
             touch();
           }, g.sequenceSkipPointPenalty),
-          "Subtracted every time the group taps a sub-task's own skip button instead of waiting it out. Skipping the LAST sub-task doesn't cost points on top of this — it fails the whole stop outright (0 pts), same as a skip elsewhere."));
+          "Subtracted every time the group taps a sub-task's own skip button instead of waiting it out. Skipping the LAST sub-task doesn't cost points on top of this — it fails the whole task outright (0 pts), same as a skip elsewhere."));
       }
     }
 
@@ -1141,7 +1141,7 @@
     var set = function (key) { return function (v) { c[key] = v; touch(); }; };
 
     main.appendChild(el("h2", { class: "panel-title", text: "Game settings" }));
-    main.appendChild(el("p", { class: "panel-sub", text: "Everything that isn't tied to a single stop." }));
+    main.appendChild(el("p", { class: "panel-sub", text: "Everything that isn't tied to a single task." }));
 
     main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "🔒 Access code" }),
@@ -1184,11 +1184,11 @@
       el("div", { class: "row2" },
         field("Minutes added per hint", numberInput(c.hintPenaltyMinutes, set("hintPenaltyMinutes")),
               "Set to 0 for free hints."),
-        field("Minutes added per skipped stop", numberInput(c.skipPenaltyMinutes, set("skipPenaltyMinutes")))
+        field("Minutes added per skipped task", numberInput(c.skipPenaltyMinutes, set("skipPenaltyMinutes")))
       ),
       field("Wrong answers before \"give up\" appears",
             numberInput(c.skipAfterWrongAnswers, set("skipAfterWrongAnswers"), 1),
-            "The give-up button only shows once every hint on that stop is revealed AND they've been wrong this many times. Set it very high to effectively disable skipping.")
+            "The give-up button only shows once every hint on that task is revealed AND they've been wrong this many times. Set it very high to effectively disable skipping.")
     ));
 
     main.appendChild(el("fieldset", { class: "fieldset" },
@@ -1218,8 +1218,8 @@
     main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "Final group selfie" }),
       el("p", { class: "fs-note", text:
-        "A one-off screen after the last stop, before the results: everyone piles in for a group selfie. " +
-        "It isn't a stop — no timer, no points, not counted in \"Stop N of M\". The photo can't be skipped " +
+        "A one-off screen after the last task, before the results: everyone piles in for a group selfie. " +
+        "It isn't a task — no timer, no points, not counted in \"Task N of M\". The photo can't be skipped " +
         "past, and it pairs side-by-side with the earliest photo taken elsewhere in the hunt on the finish " +
         "screen. All the wording for it lives in Buttons & labels → Photo capture." }),
       field("Selfie step", selectInput(String(HuntLogic.isFinalSelfieEnabled(draft.config)), [
@@ -1242,9 +1242,9 @@
       ["arrivedButton",  "\"We're here\" (travel screen)"],
       ["submitButton",   "Submit an answer"],
       ["dareButton",     "Confirm a dare is done"],
-      ["infoButton",     "Continue past an info stop"],
+      ["infoButton",     "Continue past an info task"],
       ["nextButton",     "Next clue"],
-      ["finishButton",   "Finish (on the last stop)"],
+      ["finishButton",   "Finish (on the last task)"],
       ["backToClue",     "Re-read the travel clue"],
       ["resetButton",    "Reset the hunt"]
     ]},
@@ -1257,21 +1257,21 @@
       ["hintLockedTitle",  "Tooltip on a locked hint"],
       ["hintZoneLabel",    "\"HINTS\" heading above the hint buttons"],
       ["hintTag",        "Label above a revealed hint"],
-      ["skipButton",     "Give up on a stop"],
-      ["jumpSkipButton", "Always-available \"skip this task, no penalty\" button, on every stop"],
-      ["taskTimerTarget", "Target-time readout next to the per-stop clock"],
+      ["skipButton",     "Give up on a task"],
+      ["jumpSkipButton", "Always-available \"skip this task, no penalty\" button, on every task"],
+      ["taskTimerTarget", "Target-time readout next to the per-task clock"],
       ["taskPoints",      "Live points preview ({points}, {possible})"]
     ]},
     { title: "Answer area", note: "", keys: [
       ["answerLabel",       "Label above the answer box"],
       ["answerPlaceholder", "Greyed-out text inside the box"],
       ["choiceLabel",       "Label above multiple-choice options"],
-      ["onetryLabel",       "Label above a one-try choice stop's options"],
-      ["pickerLabel",       "Label above a \"choose your path\" picker stop's options"],
-      ["sequenceSubProgress", "\"Sub-task n of total\" counter on a timed-sequence stop ({n}, {total})"],
-      ["sequenceSkipButton", "Default skip button text on a timed-sequence stop's sub-tasks"],
+      ["onetryLabel",       "Label above a one-try choice task's options"],
+      ["pickerLabel",       "Label above a \"choose your path\" picker task's options"],
+      ["sequenceSubProgress", "\"Sub-task n of total\" counter on a timed-sequence task ({n}, {total})"],
+      ["sequenceSkipButton", "Default skip button text on a timed-sequence task's sub-tasks"],
       ["emptyAnswer",       "Nag when they submit nothing"],
-      ["placeholderBadge",  "Banner on a stop with no real answer yet"]
+      ["placeholderBadge",  "Banner on a task with no real answer yet"]
     ]},
     { title: "Card headings", note: "", keys: [
       ["travelEyebrow", "Above the travel clue"],
@@ -1279,7 +1279,7 @@
       ["howToTitle",    "\"How this works\" heading"],
       ["scoringExplainerTitle", "\"How scoring works\" heading (clear this to hide that whole card)"]
     ]},
-    { title: "Progress & timing", note: "{n} = current stop, {total} = number of stops.", keys: [
+    { title: "Progress & timing", note: "{n} = current task, {total} = number of tasks.", keys: [
       ["hudProgress",  "Progress counter"],
       ["hudFinished",  "Progress counter once finished"],
       ["hintCostNote", "Penalty explainer on the start screen ({min}, {skipMin})"],
@@ -1292,13 +1292,13 @@
       ["solvedPoints",        "Points earned ({earned}, {possible})"],
       ["solvedPointsSkipped", "Points shown after a skip ({possible})"]
     ]},
-    { title: "Failure screen", note: "Only reachable from a one-try choice stop's wrong first guess.", keys: [
+    { title: "Failure screen", note: "Only reachable from a one-try choice task's wrong first guess.", keys: [
       ["failTick",            "Big emoji"],
-      ["failureTitle",        "Default headline (each stop can override its own)"],
+      ["failureTitle",        "Default headline (each task can override its own)"],
       ["solvedPointsFailed",  "Points shown after a fail ({possible})"],
-      ["recapFailed",         "Suffix on a failed stop in the route recap"]
+      ["recapFailed",         "Suffix on a failed task in the route recap"]
     ]},
-    { title: "Photo capture", note: "Shown on any stop with photo capture turned on (see that stop's own \"Photo capture\" section).", keys: [
+    { title: "Photo capture", note: "Shown on any task with photo capture turned on (see that task's own \"Photo capture\" section).", keys: [
       ["photoCaptureLabel",  "Heading above the photo control"],
       ["takePhotoButton",    "\"Take a photo\" button"],
       ["retakePhotoButton",  "\"Retake\" button"],
@@ -1311,7 +1311,7 @@
       ["finalSelfiePhotoLabel", "Label above the selfie photo control"],
       ["finalSelfieButton", "Button once the selfie is attached"],
       ["thenNowTitle",       "\"Then & Now\" heading on the finish screen"],
-      ["thenNowFirstLabel",  "Caption under the earlier photo (can still use {name} for the stop's name)"],
+      ["thenNowFirstLabel",  "Caption under the earlier photo (can still use {name} for the task's name)"],
       ["thenNowSelfieLabel", "Caption under the final selfie"]
     ]},
     { title: "Access code lock screen", note: "Only ever shown if you've set a code under \"⚙️ Game settings\".", keys: [
@@ -1327,9 +1327,9 @@
       ["travelFootnote", "Small print under \"we're here\""],
       ["finishKicker",   "Small line above \"hunt complete\""],
       ["recapSummary",   "The collapsible route recap heading"],
-      ["recapSolved",    "Suffix on a solved stop in the recap"],
-      ["recapSkipped",   "Suffix on a skipped stop in the recap"],
-      ["recapPoints",    "Points suffix on a scored stop in the recap ({earned}, {possible})"],
+      ["recapSolved",    "Suffix on a solved task in the recap"],
+      ["recapSkipped",   "Suffix on a skipped task in the recap"],
+      ["recapPoints",    "Points suffix on a scored task in the recap ({earned}, {possible})"],
       ["noPenalty",      "Shown when they took no penalties"],
       ["stagKicker",     "\"STAG SCORE\" heading on the finish screen"],
       ["stagPoints",     "Points readout on the STAG card ({earned}, {possible}, {percent})"]
@@ -1338,12 +1338,12 @@
       ["scoreFinalLabel",   "Final time"],
       ["scoreRawLabel",     "On the clock"],
       ["scorePenaltyLabel", "Penalties"],
-      ["scoreStopsLabel",   "Stops solved"],
+      ["scoreStopsLabel",   "Tasks solved"],
       ["scoreHintsLabel",   "Hints burned"],
       ["scoreWrongLabel",   "Wrong guesses"],
       ["scoreGirlsMetLabel","\"Girls met\" stat label"],
       ["factGroom",         "Start screen: \"Groom\""],
-      ["factStops",         "Start screen: \"Stops\""],
+      ["factStops",         "Start screen: \"Tasks\""],
       ["factDuration",      "Start screen: \"Time\""],
       ["factDistance",      "Start screen: \"Walking\""]
     ]}
@@ -1361,8 +1361,8 @@
     main.appendChild(el("div", { class: "warnbox info" },
       el("strong", { text: "Tokens" }),
       el("ul", {},
-        el("li", { text: "{n} — hint number, or current stop number" }),
-        el("li", { text: "{total} — total number of stops" }),
+        el("li", { text: "{n} — hint number, or current task number" }),
+        el("li", { text: "{total} — total number of tasks" }),
         el("li", { text: "{min} — the relevant penalty in minutes" }),
         el("li", { text: "{skipMin} — the skip penalty in minutes" })
       )
@@ -1478,19 +1478,19 @@
 
     main.appendChild(el("h2", { class: "panel-title", text: "Scoring & STAG levels" }));
     main.appendChild(el("p", { class: "panel-sub", text:
-      "A per-stop timer and a points total, on top of the plain time-and-penalties scoreboard on the finish screen. The clock for a stop only ever runs during the on-site puzzle — never while they're walking to get there." }));
+      "A per-task timer and a points total, on top of the plain time-and-penalties scoreboard on the finish screen. The clock for a task only ever runs during the on-site puzzle — never while they're walking to get there." }));
 
     main.appendChild(el("div", { class: "warnbox info" },
       "🦌 Always on for every hunt — there's deliberately no off switch. " +
       "(There used to be one; it turned out to be a way for the timer to go " +
       "quietly missing on a stale draft, which isn't a risk worth keeping for " +
-      "a one-shot live event.) You can still exclude an individual stop from " +
-      "scoring below, on that stop's own \"Scoring\" section."
+      "a one-shot live event.) You can still exclude an individual task from " +
+      "scoring below, on that task's own \"Scoring\" section."
     ));
 
     main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "Game-wide defaults" }),
-      el("p", { class: "fs-note", text: "Every stop uses these unless it has its own override (set on the stop itself, under \"Scoring\")." }),
+      el("p", { class: "fs-note", text: "Every task uses these unless it has its own override (set on the task itself, under \"Scoring\")." }),
       el("div", { class: "row2" },
         field("Target time (seconds)", numberInput(s.targetSeconds == null ? 180 : s.targetSeconds,
           function (v) { s.targetSeconds = v; touch(); }), "180 = 3 minutes."),
@@ -1499,7 +1499,7 @@
       ),
       el("div", { class: "row2" },
         field("Minimum points", numberInput(s.minPoints == null ? 10 : s.minPoints,
-          function (v) { s.minPoints = v; touch(); }), "The floor for a slow-but-solved stop. A skip always earns 0."),
+          function (v) { s.minPoints = v; touch(); }), "The floor for a slow-but-solved task. A skip always earns 0."),
         field("Decay window (seconds)", numberInput(s.decayWindowSeconds == null ? 300 : s.decayWindowSeconds,
           function (v) { s.decayWindowSeconds = v; touch(); }), "Seconds past the target before points bottom out.")
       ),
@@ -1514,15 +1514,15 @@
       field("Points lost per skipped sub-task",
         numberInput(s.sequenceSkipPointPenalty == null ? 50 : s.sequenceSkipPointPenalty,
           function (v) { s.sequenceSkipPointPenalty = v; touch(); }),
-        "Timed-sequence stops only. Subtracted every time the group skips a sub-task instead of waiting it out; skipping the last one fails the whole stop instead (0 pts).")
+        "Timed-sequence tasks only. Subtracted every time the group skips a sub-task instead of waiting it out; skipping the last one fails the whole task instead (0 pts).")
     ));
 
     var possible = HuntLogic.totalPossiblePoints(draft.stops, draft.config);
     var scoredCount = draft.stops.filter(HuntLogic.isScoredStop).length;
     main.appendChild(el("div", { class: "warnbox info" },
       "Total possible right now: " + possible + " pts across " + scoredCount + " of " +
-      draft.stops.length + " stops. (" + (draft.stops.length - scoredCount) +
-      " excluded — info stops by default, or anything you've switched off individually.)"
+      draft.stops.length + " tasks. (" + (draft.stops.length - scoredCount) +
+      " excluded — info tasks by default, or anything you've switched off individually.)"
     ));
 
     main.appendChild(el("fieldset", { class: "fieldset" },
@@ -1619,7 +1619,7 @@
   }
 
   /**
-   * A "picker" stop's options: which path the group can choose, and where
+   * A "picker" task's options: which path the group can choose, and where
    * each one jumps to. Mirrors renderStagLevelsField's repeatable-rows
    * pattern above. Needs at least 2 options with a label and a target to
    * make any sense — stopProblems() flags anything short of that.
@@ -1627,12 +1627,12 @@
   function renderPickerOptionsField(stop) {
     var fs = el("fieldset", { class: "fieldset" }, el("h3", { text: "Picker options" }));
     fs.appendChild(el("p", { class: "fs-note", text:
-      "Whichever option the group doesn't tap is excluded from the rest of this playthrough — its target stop is never played this run." }));
+      "Whichever option the group doesn't tap is excluded from the rest of this playthrough — its target task is never played this run." }));
 
     var rows = el("div", { class: "list-rows" });
 
     function targetOptions() {
-      var opts = [{ value: "", label: "— choose a stop —" }];
+      var opts = [{ value: "", label: "— choose a task —" }];
       draft.stops.forEach(function (s) {
         if (s === stop) return;   // can't point a picker at itself
         opts.push({ value: s.id, label: (s.name || s.id) + "  (" + s.id + ")" });
@@ -1701,14 +1701,14 @@
   }
 
   /**
-   * A "sequence" stop's sub-tasks: each with its own label, instructions,
+   * A "sequence" task's sub-tasks: each with its own label, instructions,
    * optional image, and a custom countdown length. Same repeatable-rows
    * pattern as renderPickerOptionsField above, plus a per-row imageField.
    */
   function renderSubTasksField(stop) {
     var fs = el("fieldset", { class: "fieldset" }, el("h3", { text: "Sub-tasks" }));
     fs.appendChild(el("p", { class: "fs-note", text:
-      "Played in this order. Each one counts down on its own — when it hits 0, the group is auto-advanced to the next, and finishing the last one solves the stop. Each sub-task also has its own skip button, for a group that wants to move on early: skipping any sub-task except the last one costs points (see \"Points lost per skipped sub-task\" below) and moves to the next; skipping the LAST one fails the whole stop outright, straight to the failure screen." }));
+      "Played in this order. Each one counts down on its own — when it hits 0, the group is auto-advanced to the next, and finishing the last one solves the task. Each sub-task also has its own skip button, for a group that wants to move on early: skipping any sub-task except the last one costs points (see \"Points lost per skipped sub-task\" below) and moves to the next; skipping the LAST one fails the whole task outright, straight to the failure screen." }));
 
     var rows = el("div", { class: "list-rows" });
 
@@ -1719,7 +1719,7 @@
 
       if (subs.length < 1) {
         fs.insertBefore(el("div", { class: "warnbox amber" },
-          "Add at least 1 sub-task, or there's nothing for this stop to do."
+          "Add at least 1 sub-task, or there's nothing for this task to do."
         ), rows);
       } else {
         var existingWarn = fs.querySelector(".warnbox");
@@ -1787,7 +1787,7 @@
 
   function renderChecklist(main) {
     main.appendChild(el("h2", { class: "panel-title", text: "Pre-event checklist" }));
-    main.appendChild(el("p", { class: "panel-sub", text: "Everything the editor can tell you is still outstanding, plus your own notes per stop." }));
+    main.appendChild(el("p", { class: "panel-sub", text: "Everything the editor can tell you is still outstanding, plus your own notes per task." }));
 
     var size = totalBytes();
     if (size > TOTAL_WARN_BYTES) {
@@ -1812,7 +1812,7 @@
         stop.verifyNote ? el("p", { text: "🔍 " + stop.verifyNote }) : null,
         el("div", { class: "imgbtns" },
           el("button", {
-            class: "imgbtn", text: "Edit this stop →",
+            class: "imgbtn", text: "Edit this task →",
             onclick: function () { select({ type: "stop", index: i }); }
           }))
       ));
@@ -1820,7 +1820,7 @@
 
     if (!anyOutstanding) {
       main.insertBefore(
-        el("div", { class: "warnbox info", text: "🎉 Every stop has a name, a clue, a puzzle, hints and a real answer." }),
+        el("div", { class: "warnbox info", text: "🎉 Every task has a name, a clue, a puzzle, hints and a real answer." }),
         main.children[2]
       );
     }
@@ -1882,7 +1882,7 @@
       " * easiest route is to open admin.html, make changes there, and export again.\n" +
       " *\n" +
       " * NOTE: exporting replaces this whole file, so any comments you add by hand\n" +
-      " * will be lost on the next export. Put notes in a stop's `verifyNote` field\n" +
+      " * will be lost on the next export. Put notes in a task's `verifyNote` field\n" +
       " * instead — that's a real field and it survives.\n" +
       " *\n" +
       " * Photos are embedded as base64 data URIs, which is why some lines are very\n" +
@@ -1996,7 +1996,7 @@
         return;
       }
       if (!confirm("Replace the current draft with this backup?\n\n" +
-                   parsed.stops.length + " stops. Your current draft will be lost.")) return;
+                   parsed.stops.length + " tasks. Your current draft will be lost.")) return;
       draft = parsed;
       select({ type: "stop", index: 0 });
       touch();

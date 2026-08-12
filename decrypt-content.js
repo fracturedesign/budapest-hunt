@@ -46,7 +46,7 @@ async function main() {
 
   if (outPath) {
     fs.writeFileSync(outPath, out);
-    console.error(`Decrypted ${data.stops.length} stops to ${outPath}`);
+    console.error(`Decrypted ${data.stops.length} tasks to ${outPath}`);
   } else {
     console.log(out);
   }
