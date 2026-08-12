@@ -135,9 +135,11 @@ else exists to read (view source, dev tools, whatever) until the correct
 code is entered — the group's browser derives the same key and decrypts the
 whole thing locally, in memory.
 
-Once entered correctly on a phone, it's remembered for good (the decrypted
-data itself is cached in that browser's local storage) — never asked again
-on that device, even across reloads or closing the tab, until the hunt is
+Once entered correctly on a phone, it's remembered for good (the code itself
+— not the multi-MB decrypted hunt, which can easily blow a mobile browser's
+local-storage quota once photos are embedded — is cached, and re-decryption
+on each load is fast enough not to matter) — never asked again on that
+device, even across reloads or closing the tab, until the hunt is
 reset back to the very beginning (either the HUD's ⟲ or the finish screen's
 "Reset the hunt" button, both of which now force a real page reload so the
 lock screen genuinely reappears), which is the one moment that asks for the

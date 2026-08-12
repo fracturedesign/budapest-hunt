@@ -246,29 +246,40 @@
 
   /** Encrypt a plaintext string with a passphrase. Resolves to
    *  { salt, iv, ciphertext }, each a base64 string, safe to embed in a
-   *  plain JS file (content.js). */
+   *  plain JS file (content.js). Always returns a promise, even if
+   *  something (e.g. getSubtleCrypto() finding no Web Crypto — insecure
+   *  context, plain HTTP) throws synchronously before any async work
+   *  starts; without this, that throw would escape as an uncaught
+   *  exception instead of a catchable rejection, and the caller's
+   *  .then()/.catch() would silently never run at all. */
   function encryptWithCode(plaintext, code) {
-    var sc = getSubtleCrypto();
-    var salt = sc.getRandomValues(new Uint8Array(16));
-    var iv = sc.getRandomValues(new Uint8Array(12));
-    return deriveAesKey(code, salt, ["encrypt"]).then(function (key) {
-      return sc.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(plaintext));
-    }).then(function (ciphertextBuf) {
-      return { salt: bufToBase64(salt), iv: bufToBase64(iv), ciphertext: bufToBase64(ciphertextBuf) };
+    return Promise.resolve().then(function () {
+      var sc = getSubtleCrypto();
+      var salt = sc.getRandomValues(new Uint8Array(16));
+      var iv = sc.getRandomValues(new Uint8Array(12));
+      return deriveAesKey(code, salt, ["encrypt"]).then(function (key) {
+        return sc.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(plaintext));
+      }).then(function (ciphertextBuf) {
+        return { salt: bufToBase64(salt), iv: bufToBase64(iv), ciphertext: bufToBase64(ciphertextBuf) };
+      });
     });
   }
 
   /** Decrypt { salt, iv, ciphertext } (base64 strings) with a passphrase.
-   *  Resolves to the plaintext string, or rejects if the code is wrong. */
+   *  Resolves to the plaintext string, or rejects if the code is wrong (or,
+   *  same as encryptWithCode above, if Web Crypto itself isn't available —
+   *  always a promise, never a synchronous throw). */
   function decryptWithCode(blob, code) {
-    var sc = getSubtleCrypto();
-    var salt = base64ToBuf(blob.salt);
-    var iv = base64ToBuf(blob.iv);
-    var ciphertext = base64ToBuf(blob.ciphertext);
-    return deriveAesKey(code, salt, ["decrypt"]).then(function (key) {
-      return sc.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
-    }).then(function (plainBuf) {
-      return new TextDecoder().decode(plainBuf);
+    return Promise.resolve().then(function () {
+      var sc = getSubtleCrypto();
+      var salt = base64ToBuf(blob.salt);
+      var iv = base64ToBuf(blob.iv);
+      var ciphertext = base64ToBuf(blob.ciphertext);
+      return deriveAesKey(code, salt, ["decrypt"]).then(function (key) {
+        return sc.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
+      }).then(function (plainBuf) {
+        return new TextDecoder().decode(plainBuf);
+      });
     });
   }
 
@@ -822,36 +833,55 @@
       document.body.appendChild(s);
     }
 
-    // Already unlocked earlier on this device? Skip the prompt entirely —
-    // same "ask once, remember for good" behaviour as before, just backed
-    // by the actual decrypted data instead of a boolean flag.
-    try {
-      var cached = localStorage.getItem(UNLOCK_CACHE_KEY);
-      if (cached) { proceedWithData(JSON.parse(cached)); return; }
-    } catch (e) { /* fall through to asking */ }
+    function showLockScreen() {
+      show("lock");   // hoisted — safe to call this early, see show()/screens() below
+      $("lockKicker").textContent = labels.lockKicker || "🔒 Private hunt";
+      $("lockTitle").textContent = labels.lockTitle || "Enter the code to continue";
+      $("lockInput").placeholder = labels.lockPlaceholder || "Access code";
+      $("btnUnlock").textContent = labels.unlockButton || "UNLOCK";
+      $("lockFeedback").textContent = "";
+      $("lockInput").value = "";
+      setTimeout(function () { $("lockInput").focus(); }, 50);
 
-    show("lock");   // hoisted — safe to call this early, see show()/screens() below
-    $("lockKicker").textContent = labels.lockKicker || "🔒 Private hunt";
-    $("lockTitle").textContent = labels.lockTitle || "Enter the code to continue";
-    $("lockInput").placeholder = labels.lockPlaceholder || "Access code";
-    $("btnUnlock").textContent = labels.unlockButton || "UNLOCK";
-    $("lockFeedback").textContent = "";
-    $("lockInput").value = "";
-    setTimeout(function () { $("lockInput").focus(); }, 50);
-
-    $("lockForm").addEventListener("submit", function (e) {
-      e.preventDefault();
-      decryptWithCode(HUNT_ENCRYPTED, $("lockInput").value).then(function (plaintext) {
-        var data = JSON.parse(plaintext);
-        try { localStorage.setItem(UNLOCK_CACHE_KEY, plaintext); } catch (err) {}
-        proceedWithData(data);
-      }).catch(function () {
-        $("lockFeedback").textContent = labels.lockWrongCode || "That's not it. Try again.";
-        $("lockFeedback").className = "feedback bad";
-        $("lockInput").value = "";
-        $("lockInput").focus();
+      $("lockForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var code = $("lockInput").value;
+        decryptWithCode(HUNT_ENCRYPTED, code).then(function (plaintext) {
+          // Cache the CODE, not the decrypted data — the hunt itself can
+          // run into several MB once photos are embedded, easily blowing
+          // localStorage's ~5-10MB-per-origin quota; the code is a few
+          // bytes and re-decrypting on the next load is fast (well under
+          // a second), so there's no real cost to redoing it every time.
+          try { localStorage.setItem(UNLOCK_CACHE_KEY, code); } catch (err) {}
+          proceedWithData(JSON.parse(plaintext));
+        }).catch(function (err) {
+          // Web Crypto itself being unavailable (e.g. plain http:// instead
+          // of https://) looks identical to a wrong code otherwise — tell
+          // them the real reason instead of implying they mistyped it.
+          $("lockFeedback").textContent = (err && /Web Crypto/.test(err.message))
+            ? "Can't verify the code right now — reload this page over a secure (https://) link."
+            : (labels.lockWrongCode || "That's not it. Try again.");
+          $("lockFeedback").className = "feedback bad";
+          $("lockInput").value = "";
+          $("lockInput").focus();
+        });
       });
-    });
+    }
+
+    // Already unlocked earlier on this device? Skip the prompt — re-decrypt
+    // with the cached code instead of asking again. If that somehow fails
+    // (stale/corrupted cache), fall through to the normal prompt rather
+    // than getting stuck.
+    var cachedCode;
+    try { cachedCode = localStorage.getItem(UNLOCK_CACHE_KEY); } catch (e) {}
+    if (cachedCode) {
+      decryptWithCode(HUNT_ENCRYPTED, cachedCode).then(function (plaintext) {
+        proceedWithData(JSON.parse(plaintext));
+      }).catch(showLockScreen);
+      return;
+    }
+
+    showLockScreen();
   }
 
   /* ---- content source ------------------------------------------------------
