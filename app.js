@@ -187,16 +187,89 @@
   }
 
   /**
-   * The whole-game access code (config.accessCode) — a deterrent, not real
-   * security: this is a static site with no server, so the code lives in
-   * plain text in content.js and anyone who views source can read it. It
-   * just stops a casual passerby with the link from wandering in. Trimmed
-   * and case-insensitive, unlike puzzle answers — no accent/punctuation
-   * stripping, since a code should be typed close to as given.
+   * Encrypt/decrypt the whole game with a passphrase (the organiser's
+   * access code), so an unauthorised viewer of content.js sees only
+   * ciphertext — not just a hidden "if" check, the puzzle content itself
+   * is unreadable without the code. AES-256-GCM, keyed via PBKDF2 over the
+   * passphrase. Web Crypto (`crypto.subtle`) is available in every modern
+   * browser AND in Node 19+, so these same functions run unchanged in the
+   * app (app.js/admin.js) and in the test/export tooling (test.js).
+   *
+   * GCM's authentication tag means a wrong passphrase makes decryption
+   * fail outright (a rejected promise) rather than silently returning
+   * garbage — that failure IS the "wrong code" check; there's no separate
+   * plaintext comparison anywhere.
    */
-  function codeMatches(input, code) {
-    return String(input || "").trim().toLowerCase() ===
-           String(code || "").trim().toLowerCase();
+  var PBKDF2_ITERATIONS = 250000;
+
+  function getSubtleCrypto() {
+    var c = (typeof crypto !== "undefined" && crypto.subtle) ? crypto
+          : (typeof globalThis !== "undefined" && globalThis.crypto && globalThis.crypto.subtle) ? globalThis.crypto
+          : null;
+    if (!c) throw new Error("Web Crypto isn't available in this environment.");
+    return c;
+  }
+
+  function bufToBase64(buf) {
+    var bytes = new Uint8Array(buf), bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function base64ToBuf(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes.buffer;
+  }
+
+  /** Trimmed and case-insensitive, matching the old plaintext-comparison
+   *  gate's behaviour — a group typing a code on a phone at 1am shouldn't
+   *  fail on a stray capital letter. Both encrypt and decrypt normalise
+   *  through this same function, so they always agree. */
+  function normalizeCode(code) {
+    return String(code || "").trim().toLowerCase();
+  }
+
+  function deriveAesKey(code, saltBuf, usages) {
+    var sc = getSubtleCrypto();
+    return sc.subtle.importKey("raw", new TextEncoder().encode(normalizeCode(code)), "PBKDF2", false, ["deriveKey"])
+      .then(function (keyMaterial) {
+        return sc.subtle.deriveKey(
+          { name: "PBKDF2", salt: saltBuf, iterations: PBKDF2_ITERATIONS, hash: "SHA-256" },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          usages
+        );
+      });
+  }
+
+  /** Encrypt a plaintext string with a passphrase. Resolves to
+   *  { salt, iv, ciphertext }, each a base64 string, safe to embed in a
+   *  plain JS file (content.js). */
+  function encryptWithCode(plaintext, code) {
+    var sc = getSubtleCrypto();
+    var salt = sc.getRandomValues(new Uint8Array(16));
+    var iv = sc.getRandomValues(new Uint8Array(12));
+    return deriveAesKey(code, salt, ["encrypt"]).then(function (key) {
+      return sc.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(plaintext));
+    }).then(function (ciphertextBuf) {
+      return { salt: bufToBase64(salt), iv: bufToBase64(iv), ciphertext: bufToBase64(ciphertextBuf) };
+    });
+  }
+
+  /** Decrypt { salt, iv, ciphertext } (base64 strings) with a passphrase.
+   *  Resolves to the plaintext string, or rejects if the code is wrong. */
+  function decryptWithCode(blob, code) {
+    var sc = getSubtleCrypto();
+    var salt = base64ToBuf(blob.salt);
+    var iv = base64ToBuf(blob.iv);
+    var ciphertext = base64ToBuf(blob.ciphertext);
+    return deriveAesKey(code, salt, ["decrypt"]).then(function (key) {
+      return sc.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, ciphertext);
+    }).then(function (plainBuf) {
+      return new TextDecoder().decode(plainBuf);
+    });
   }
 
   /** ms → "M:SS" or "H:MM:SS". */
@@ -638,7 +711,8 @@
     resolveLabels: resolveLabels,
     fillTokens: fillTokens,
     checkAnswer: checkAnswer,
-    codeMatches: codeMatches,
+    encryptWithCode: encryptWithCode,
+    decryptWithCode: decryptWithCode,
     formatTime: formatTime,
     countHints: countHints,
     countWrong: countWrong,
@@ -708,14 +782,85 @@
 
   var $ = function (id) { return document.getElementById(id); };
 
+  var PREVIEW = /[?&]preview=1\b/.test(location.search);
+
+  // Fixed, not derived from STORAGE_KEY — only ever used for the real game
+  // (bootLocked() below is skipped entirely in preview mode), so it doesn't
+  // need to vary by preview/real the way STORAGE_KEY/PHOTOS_KEY do. Declared
+  // up here (not down by PHOTOS_KEY, where it'd read more naturally) because
+  // bootLocked() below can run and return before that line ever executes.
+  var UNLOCK_CACHE_KEY = "budapest-hunt-v1-unlocked-data";
+
+  /* ---- access-code gate ----------------------------------------------------
+   * If config.accessCode was set when the hunt was exported, content.js
+   * ships only an encrypted blob (window.HUNT_ENCRYPTED) — not the real
+   * HUNT object — and there's nothing here to run until the group enters
+   * the code. Preview mode never hits this: it always plays the editor's
+   * own unsaved (always-plaintext) draft from localStorage, regardless of
+   * whether the currently-deployed content.js happens to be encrypted.
+   *
+   * Deliberately NOT restructured into "decrypt, then keep going" — the
+   * ~1500 lines below assume C/STOPS/L exist the moment they start
+   * running. Instead, once decryption succeeds, bootLocked() sets
+   * window.HUNT and appends a fresh <script src="app.js">: the browser
+   * re-executes this whole file from the top (served from cache, no extra
+   * network round-trip), and this time HUNT is real, so it sails straight
+   * past this guard into the rest of PART 2 exactly as if the hunt had
+   * never been encrypted at all. */
+  if (!PREVIEW && typeof HUNT === "undefined" && typeof HUNT_ENCRYPTED !== "undefined") {
+    bootLocked();
+    return;
+  }
+
+  function bootLocked() {
+    var labels = HUNT_ENCRYPTED.lockLabels || {};
+
+    function proceedWithData(dataObj) {
+      window.HUNT = dataObj;
+      var s = document.createElement("script");
+      s.src = "app.js";
+      document.body.appendChild(s);
+    }
+
+    // Already unlocked earlier on this device? Skip the prompt entirely —
+    // same "ask once, remember for good" behaviour as before, just backed
+    // by the actual decrypted data instead of a boolean flag.
+    try {
+      var cached = localStorage.getItem(UNLOCK_CACHE_KEY);
+      if (cached) { proceedWithData(JSON.parse(cached)); return; }
+    } catch (e) { /* fall through to asking */ }
+
+    show("lock");   // hoisted — safe to call this early, see show()/screens() below
+    $("lockKicker").textContent = labels.lockKicker || "🔒 Private hunt";
+    $("lockTitle").textContent = labels.lockTitle || "Enter the code to continue";
+    $("lockInput").placeholder = labels.lockPlaceholder || "Access code";
+    $("btnUnlock").textContent = labels.unlockButton || "UNLOCK";
+    $("lockFeedback").textContent = "";
+    $("lockInput").value = "";
+    setTimeout(function () { $("lockInput").focus(); }, 50);
+
+    $("lockForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      decryptWithCode(HUNT_ENCRYPTED, $("lockInput").value).then(function (plaintext) {
+        var data = JSON.parse(plaintext);
+        try { localStorage.setItem(UNLOCK_CACHE_KEY, plaintext); } catch (err) {}
+        proceedWithData(data);
+      }).catch(function () {
+        $("lockFeedback").textContent = labels.lockWrongCode || "That's not it. Try again.";
+        $("lockFeedback").className = "feedback bad";
+        $("lockInput").value = "";
+        $("lockInput").focus();
+      });
+    });
+  }
+
   /* ---- content source ------------------------------------------------------
    * Normally the game plays whatever is in content.js. Opening the page as
    * index.html?preview=1 makes it play the editor's unsaved draft instead, and
    * keeps its progress under a separate storage key so a preview run can never
    * clobber the real game state. admin.html writes that draft. */
 
-  var PREVIEW = /[?&]preview=1\b/.test(location.search);
-  var DATA = HUNT;
+  var DATA = (typeof HUNT !== "undefined") ? HUNT : null;
 
   if (PREVIEW) {
     try {
@@ -805,28 +950,6 @@
 
   var PHOTOS_KEY = STORAGE_KEY + "-photos";
   var photos = loadPhotos();     // { stopId: "data:image/jpeg;base64,..." }
-
-  /* ---- access code -----------------------------------------------------
-   * Optional whole-game gate (config.accessCode). Verified once, then
-   * remembered in localStorage for the rest of the browser's life on this
-   * device — never re-asked on a normal reload/resume. Only cleared (and
-   * re-asked) when the hunt is reset back to the very beginning, either via
-   * the HUD's ⟲ or the finish screen's "Reset the hunt" button. */
-
-  var ACCESS_KEY = STORAGE_KEY + "-unlocked";
-
-  function isUnlocked() {
-    try { return localStorage.getItem(ACCESS_KEY) === "1"; } catch (e) { return false; }
-  }
-  function unlock() {
-    try { localStorage.setItem(ACCESS_KEY, "1"); } catch (e) {}
-  }
-  function lock() {
-    try { localStorage.removeItem(ACCESS_KEY); } catch (e) {}
-  }
-  function needsAccessCode() {
-    return !!(C.accessCode && String(C.accessCode).trim()) && !isUnlocked();
-  }
 
   // Reserved key for the final-selfie screen's photo, in the same `photos`
   // map as every stop's. No real stop can ever have this id — content.js
@@ -1758,19 +1881,6 @@
 
   function goStart() { state.view = "start"; paintStart(); show("start"); }
 
-  /** The access-code gate — see needsAccessCode() above. Doesn't touch
-   *  state.view at all: this sits entirely in front of the real game. */
-  function goLock() {
-    $("lockKicker").textContent = t("lockKicker");
-    $("lockTitle").textContent = t("lockTitle");
-    $("lockInput").placeholder = t("lockPlaceholder");
-    $("lockInput").value = "";
-    $("btnUnlock").textContent = t("unlockButton");
-    $("lockFeedback").textContent = "";
-    show("lock");
-    setTimeout(function () { $("lockInput").focus(); }, 50);
-  }
-
   function goTravel() {
     // On-site puzzles skip the travel screen entirely — nothing to walk to.
     if (!hasTravelClue(currentStop())) { goPuzzle(); return; }
@@ -2090,15 +2200,25 @@
   $("btnStart").addEventListener("click", beginFreshRun);
 
   /** Wipe local progress and go back to the very beginning — shared by both
-   *  reset entry points. Re-locks behind the access code if one's set,
-   *  since "starting the hunt from the beginning" is the one moment that
-   *  should ask for it again. */
+   *  reset entry points. Re-locks behind the access code if this hunt is
+   *  encrypted, since "starting the hunt from the beginning" is the one
+   *  moment that should ask for it again. A full reload is the simplest
+   *  robust way to do that: HUNT/C/STOPS already exist as real in-memory
+   *  data in this running instance (decrypted once, long since forgotten
+   *  the code that unlocked it) — there's no clean way to "re-lock" that
+   *  short of starting the whole page over, which bootLocked() then
+   *  intercepts again since the cached copy is gone. */
   function resetToStart() {
-    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(PHOTOS_KEY); } catch (e) {}
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(PHOTOS_KEY);
+      localStorage.removeItem(UNLOCK_CACHE_KEY);
+    } catch (e) {}
+    if (typeof HUNT_ENCRYPTED !== "undefined") { location.reload(); return; }
     state = freshState();
     photos = {};
     if (timerHandle) clearInterval(timerHandle);
-    if (C.accessCode && String(C.accessCode).trim()) { lock(); goLock(); } else { goStart(); }
+    goStart();
   }
 
   // The ⟲ in the HUD — the only way to abandon a run in progress.
@@ -2262,7 +2382,6 @@
 
   function boot() {
     paintStart();
-    if (needsAccessCode()) { goLock(); return; }
     if (state.startedAt != null) {
       // Mid-run or finished: drop them straight back where they were.
       restoreView();
@@ -2270,19 +2389,6 @@
       show("start");
     }
   }
-
-  $("lockForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    if (codeMatches($("lockInput").value, C.accessCode)) {
-      unlock();
-      if (state.startedAt != null) { restoreView(); } else { show("start"); }
-      return;
-    }
-    $("lockFeedback").textContent = t("lockWrongCode");
-    $("lockFeedback").className = "feedback bad";
-    $("lockInput").value = "";
-    $("lockInput").focus();
-  });
 
   boot();
 

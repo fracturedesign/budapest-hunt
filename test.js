@@ -66,15 +66,9 @@ ok("numeric spelled out",       L.checkAnswer(stopNum, "Seventy Two").ok);
 ok("numeric squashed",          L.checkAnswer(stopNum, "seventytwo").ok);
 ok("rejects wrong number",     !L.checkAnswer(stopNum, "27").ok);
 
-section("2b. Access code (whole-game lock)");
-
-ok("exact match",          L.codeMatches("s3cret", "s3cret"));
-ok("case-insensitive",     L.codeMatches("S3CRET", "s3cret"));
-ok("whitespace-padded",    L.codeMatches("  s3cret  ", "s3cret"));
-ok("rejects wrong code",  !L.codeMatches("nope", "s3cret"));
-ok("empty input never matches a real code", !L.codeMatches("", "s3cret"));
-ok("no accent/punctuation stripping, unlike puzzle answers",
-   !L.codeMatches("s3cret!", "s3cret"));
+// Section "2b. Access code" (encryptWithCode/decryptWithCode) lives at the
+// bottom of this file, in an async block — Web Crypto is promise-based, and
+// everything above this point runs synchronously top-to-bottom.
 
 /* ═══════════════════════════════════════════ 3. PLACEHOLDER STOP BEHAVIOUR ══ */
 section("3. Placeholder stops (unfilled personal content)");
@@ -762,26 +756,61 @@ ok("visible with all hints + wrongs",  skipVisible(gstop, gs, gcfg));
 gs.wrong[gstop.id] = 1;
 ok("hidden again if wrongs too few",  !skipVisible(gstop, gs, gcfg));
 
-/* ═══════════════════════════════════════════════════════ SUMMARY ══ */
-console.log("\n" + "─".repeat(60));
-if (fail === 0) {
-  console.log("\x1b[32m✅  " + pass + " checks passed, 0 failed.\x1b[0m");
-} else {
-  console.log("\x1b[31m❌  " + fail + " FAILED (" + pass + " passed):\x1b[0m");
-  failures.forEach(f => console.log("   • " + f));
-}
+/* ═══════════════════════════════ 2b. ACCESS CODE (whole-game encryption) ══
+ * Web Crypto is promise-based, so this section runs last, in an async IIFE —
+ * everything above is synchronous top-to-bottom, same as always. */
+(async function () {
+  section("2b. Access code (content.js encryption)");
 
-// Informational: which stops still need real content written.
-const stubs = HUNT.stops.filter(L.isPlaceholderStop).map(s => s.id);
-if (stubs.length) {
-  console.log("\n\x1b[33m📝  Still placeholder (any answer accepted): " +
-              stubs.join(", ") + "\x1b[0m");
-}
-const brackets = HUNT.stops.filter(s =>
-  /\[INSERT:|\[ANSWER:/.test(JSON.stringify(s))).map(s => s.id);
-if (brackets.length) {
-  console.log("\x1b[33m📝  Contains [INSERT:...] text to replace: " +
-              brackets.join(", ") + "\x1b[0m");
-}
+  const plaintext = JSON.stringify({ hello: "world", stops: [1, 2, 3] });
+  const blob = await L.encryptWithCode(plaintext, "s3cret-code");
 
-process.exit(fail === 0 ? 0 : 1);
+  ok("encrypted blob has salt/iv/ciphertext", !!(blob.salt && blob.iv && blob.ciphertext));
+  ok("ciphertext doesn't contain the plaintext", !blob.ciphertext.includes("hello"));
+
+  const decrypted = await L.decryptWithCode(blob, "s3cret-code");
+  eq("round-trips back to the exact original plaintext", decrypted, plaintext);
+
+  const decryptedCaseInsensitive = await L.decryptWithCode(blob, "S3CRET-CODE");
+  eq("code isn't case-sensitive on the way in either — same as typing it",
+     decryptedCaseInsensitive, plaintext);
+
+  let wrongCodeRejected = false;
+  try { await L.decryptWithCode(blob, "wrong-code"); }
+  catch (e) { wrongCodeRejected = true; }
+  ok("wrong code rejects outright (GCM auth failure), not silently wrong data",
+     wrongCodeRejected);
+
+  let emptyCodeRejected = false;
+  try { await L.decryptWithCode(blob, ""); }
+  catch (e) { emptyCodeRejected = true; }
+  ok("empty code also rejects", emptyCodeRejected);
+
+  const blob2 = await L.encryptWithCode(plaintext, "s3cret-code");
+  ok("two encryptions of the same plaintext+code produce different ciphertext (fresh salt/iv each time)",
+     blob2.ciphertext !== blob.ciphertext || blob2.salt !== blob.salt);
+
+  /* ═══════════════════════════════════════════════════════ SUMMARY ══ */
+  console.log("\n" + "─".repeat(60));
+  if (fail === 0) {
+    console.log("\x1b[32m✅  " + pass + " checks passed, 0 failed.\x1b[0m");
+  } else {
+    console.log("\x1b[31m❌  " + fail + " FAILED (" + pass + " passed):\x1b[0m");
+    failures.forEach(f => console.log("   • " + f));
+  }
+
+  // Informational: which stops still need real content written.
+  const stubs = HUNT.stops.filter(L.isPlaceholderStop).map(s => s.id);
+  if (stubs.length) {
+    console.log("\n\x1b[33m📝  Still placeholder (any answer accepted): " +
+                stubs.join(", ") + "\x1b[0m");
+  }
+  const brackets = HUNT.stops.filter(s =>
+    /\[INSERT:|\[ANSWER:/.test(JSON.stringify(s))).map(s => s.id);
+  if (brackets.length) {
+    console.log("\x1b[33m📝  Contains [INSERT:...] text to replace: " +
+                brackets.join(", ") + "\x1b[0m");
+  }
+
+  process.exit(fail === 0 ? 0 : 1);
+})();

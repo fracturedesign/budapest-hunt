@@ -120,27 +120,50 @@ with a stray comma.
 | **Pre-event checklist** | Every stop that's still missing something, plus your notes, in one list |
 | **Preview** | Opens the real game running your unsaved draft, with its own separate progress so it can't disturb the live game |
 
-### Access code (keeping the link private-ish)
+### Access code (real encryption, not just a hidden check)
 
 Under "⚙️ Game settings", the very first field is an optional **access
-code**. Leave it blank (the default) and the game is fully open — anyone
-with the link lands straight on the start screen, same as today. Set one and
-the group has to type it in on a dedicated lock screen before they see
-anything else — including the start screen's title, groom's name, everything.
+code**. Leave it blank (the default) and "Export content.js" produces a
+normal, plain file — anyone with the link lands straight on the start
+screen, same as always. Set a code and "Export content.js" instead
+**encrypts the whole hunt with it** — puzzles, answers, photos, everything —
+using AES-256-GCM with the code as the passphrase (via PBKDF2, 250,000
+iterations). The exported file contains nothing but ciphertext; there's no
+plaintext puzzle content or the code itself anywhere in it, not even hidden
+inside the encrypted blob. Opening the link shows a lock screen, and nothing
+else exists to read (view source, dev tools, whatever) until the correct
+code is entered — the group's browser derives the same key and decrypts the
+whole thing locally, in memory.
 
-Once entered correctly on a phone, it's remembered in that browser's local
-storage for good — never asked again on that device, even across reloads or
-closing the tab, until the hunt is reset back to the very beginning (either
-the HUD's ⟲ or the finish screen's "Reset the hunt" button), which is the one
-moment that re-locks and asks for the code again.
+Once entered correctly on a phone, it's remembered for good (the decrypted
+data itself is cached in that browser's local storage) — never asked again
+on that device, even across reloads or closing the tab, until the hunt is
+reset back to the very beginning (either the HUD's ⟲ or the finish screen's
+"Reset the hunt" button, both of which now force a real page reload so the
+lock screen genuinely reappears), which is the one moment that asks for the
+code again.
 
-**This is a deterrent, not real security.** The site is 100% static with no
-server — the code lives in plain text inside `content.js`, so anyone who
-opens their browser's dev tools and views the page source can read it
-directly. It's enough to stop a random person who stumbles on the public
-GitHub Pages URL (search engines, a leaked link, etc.) from wandering into a
-live game; it does nothing against someone who actually goes looking. Don't
-use it to protect anything more sensitive than "keep casual passersby out."
+**There is no recovery if the code is lost.** This isn't a "forgot my
+password" situation — the code is the only key that can ever decrypt that
+specific export, and it's discarded the moment `admin.html` finishes
+encrypting (never written into the output). If it's gone, that `content.js`
+is permanently unreadable, by anyone, including you. Your editing draft in
+`admin.html`'s own browser storage, and any `.json` backup you've taken, are
+both completely unaffected — this only changes what gets exported as
+`content.js`. **Write the code down somewhere safe before you export.**
+
+One practical side effect: once a hunt is encrypted, the Node test harness
+(`test.js`) can no longer read `content.js` directly — it's ciphertext, not
+JavaScript with real puzzle data in it. Use `decrypt-content.js` first:
+
+```bash
+node decrypt-content.js content.js <the-code> > /tmp/decrypted.json
+```
+
+then diff/inspect/`require()` that plain JSON instead. (`decrypt-content.js`
+never runs automatically, isn't loaded by the game or the editor, and is
+purely a local convenience — reuses the exact same `decryptWithCode()`
+function the game itself uses to unlock, from `app.js`.)
 
 ### Task types
 
@@ -424,8 +447,8 @@ stop's `id` unique.
 node test.js
 ```
 
-531 checks covering answer normalisation, matching, the access-code gate,
-task types (including the
+532 checks covering answer normalisation, matching, the access-code
+encryption round-trip, task types (including the
 picker/branching logic, the one-try-choice fail path, and the timed-sequence
 auto-advance/skip-penalty), label tokens, the timer (including the independent
 show/hide toggle), penalty maths, the skip gate, the points/decay curve,
