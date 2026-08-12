@@ -66,6 +66,16 @@ ok("numeric spelled out",       L.checkAnswer(stopNum, "Seventy Two").ok);
 ok("numeric squashed",          L.checkAnswer(stopNum, "seventytwo").ok);
 ok("rejects wrong number",     !L.checkAnswer(stopNum, "27").ok);
 
+section("2b. Access code (whole-game lock)");
+
+ok("exact match",          L.codeMatches("s3cret", "s3cret"));
+ok("case-insensitive",     L.codeMatches("S3CRET", "s3cret"));
+ok("whitespace-padded",    L.codeMatches("  s3cret  ", "s3cret"));
+ok("rejects wrong code",  !L.codeMatches("nope", "s3cret"));
+ok("empty input never matches a real code", !L.codeMatches("", "s3cret"));
+ok("no accent/punctuation stripping, unlike puzzle answers",
+   !L.codeMatches("s3cret!", "s3cret"));
+
 /* ═══════════════════════════════════════════ 3. PLACEHOLDER STOP BEHAVIOUR ══ */
 section("3. Placeholder stops (unfilled personal content)");
 

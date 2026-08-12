@@ -41,6 +41,33 @@
 <main id="main">
 
   <!-- ════════════════════════════════════════════════════════════════
+       SCREEN: ACCESS CODE LOCK
+       Only shown if config.accessCode is set — see needsAccessCode()/
+       goLock() in app.js. Sits in front of everything else; the game
+       itself doesn't render until this is past.
+       ═════════════════════════════════════════════════════════════ -->
+  <section class="screen screen-center" id="screen-lock" hidden>
+    <div class="hero">
+      <div class="hero-kicker" id="lockKicker">🔒 Private hunt</div>
+      <h1 class="hero-title" id="lockTitle" style="font-size: 30px;">Enter the code to continue</h1>
+    </div>
+    <form id="lockForm" autocomplete="off">
+      <input
+        class="answer-input"
+        id="lockInput"
+        type="text"
+        inputmode="text"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        enterkeyhint="go"
+        placeholder="Access code">
+      <button class="btn btn-primary btn-huge" type="submit" id="btnUnlock">UNLOCK</button>
+    </form>
+    <p class="feedback" id="lockFeedback" role="status" aria-live="polite"></p>
+  </section>
+
+  <!-- ════════════════════════════════════════════════════════════════
        SCREEN: START
        ═════════════════════════════════════════════════════════════ -->
   <section class="screen" id="screen-start">

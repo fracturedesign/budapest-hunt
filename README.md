@@ -120,6 +120,28 @@ with a stray comma.
 | **Pre-event checklist** | Every stop that's still missing something, plus your notes, in one list |
 | **Preview** | Opens the real game running your unsaved draft, with its own separate progress so it can't disturb the live game |
 
+### Access code (keeping the link private-ish)
+
+Under "⚙️ Game settings", the very first field is an optional **access
+code**. Leave it blank (the default) and the game is fully open — anyone
+with the link lands straight on the start screen, same as today. Set one and
+the group has to type it in on a dedicated lock screen before they see
+anything else — including the start screen's title, groom's name, everything.
+
+Once entered correctly on a phone, it's remembered in that browser's local
+storage for good — never asked again on that device, even across reloads or
+closing the tab, until the hunt is reset back to the very beginning (either
+the HUD's ⟲ or the finish screen's "Reset the hunt" button), which is the one
+moment that re-locks and asks for the code again.
+
+**This is a deterrent, not real security.** The site is 100% static with no
+server — the code lives in plain text inside `content.js`, so anyone who
+opens their browser's dev tools and views the page source can read it
+directly. It's enough to stop a random person who stumbles on the public
+GitHub Pages URL (search engines, a leaked link, etc.) from wandering into a
+live game; it does nothing against someone who actually goes looking. Don't
+use it to protect anything more sensitive than "keep casual passersby out."
+
 ### Task types
 
 Each stop picks one. They change what players actually do, not just the wording.
@@ -402,7 +424,8 @@ stop's `id` unique.
 node test.js
 ```
 
-506 checks covering answer normalisation, matching, task types (including the
+531 checks covering answer normalisation, matching, the access-code gate,
+task types (including the
 picker/branching logic, the one-try-choice fail path, and the timed-sequence
 auto-advance/skip-penalty), label tokens, the timer (including the independent
 show/hide toggle), penalty maths, the skip gate, the points/decay curve,

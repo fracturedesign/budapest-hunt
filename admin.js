@@ -1124,6 +1124,19 @@
     main.appendChild(el("p", { class: "panel-sub", text: "Everything that isn't tied to a single stop." }));
 
     main.appendChild(el("fieldset", { class: "fieldset" },
+      el("h3", { text: "🔒 Access code" }),
+      field("Code", textInput(c.accessCode, set("accessCode")),
+            "Leave blank for no gate at all (the default — anyone with the link can open it straight to the start screen). " +
+            "Set one and the group has to type it in before they see anything else, once per browser — they're never asked " +
+            "again on that phone until the hunt is reset back to the beginning."),
+      el("div", { class: "warnbox info" },
+        "This is a deterrent, not real security — it's a static site with no server, so the code sits in plain text in " +
+        "content.js and anyone who opens the browser's dev tools and views the page source can read it. It's enough to " +
+        "stop someone who stumbles on the public link from wandering in; it won't stop someone who goes looking for it."
+      )
+    ));
+
+    main.appendChild(el("fieldset", { class: "fieldset" },
       el("h3", { text: "Start screen" }),
       el("div", { class: "row2" },
         field("Groom's name", textInput(c.groomName, set("groomName"))),
@@ -1278,6 +1291,13 @@
       ["thenNowTitle",       "\"Then & Now\" heading on the finish screen"],
       ["thenNowFirstLabel",  "Caption under the earlier photo (can still use {name} for the stop's name)"],
       ["thenNowSelfieLabel", "Caption under the final selfie"]
+    ]},
+    { title: "Access code lock screen", note: "Only ever shown if you've set a code under \"⚙️ Game settings\".", keys: [
+      ["lockKicker",      "Small line above the title"],
+      ["lockTitle",       "Headline"],
+      ["lockPlaceholder", "Greyed-out text inside the code box"],
+      ["unlockButton",    "Submit button"],
+      ["lockWrongCode",   "Shown after a wrong code"]
     ]},
     { title: "Start & finish screens", note: "", keys: [
       ["startKicker",    "Small line above the title (hidden unless you set one)"],

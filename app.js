@@ -186,6 +186,19 @@
     return { ok: ok, empty: false, placeholder: false };
   }
 
+  /**
+   * The whole-game access code (config.accessCode) — a deterrent, not real
+   * security: this is a static site with no server, so the code lives in
+   * plain text in content.js and anyone who views source can read it. It
+   * just stops a casual passerby with the link from wandering in. Trimmed
+   * and case-insensitive, unlike puzzle answers — no accent/punctuation
+   * stripping, since a code should be typed close to as given.
+   */
+  function codeMatches(input, code) {
+    return String(input || "").trim().toLowerCase() ===
+           String(code || "").trim().toLowerCase();
+  }
+
   /** ms → "M:SS" or "H:MM:SS". */
   function formatTime(ms) {
     if (!isFinite(ms) || ms < 0) ms = 0;
@@ -484,6 +497,13 @@
    * ======================================================================== */
 
   var DEFAULT_LABELS = {
+    // access-code lock screen (only shown if config.accessCode is set)
+    lockKicker:      "🔒 Private hunt",
+    lockTitle:       "Enter the code to continue",
+    lockPlaceholder: "Access code",
+    unlockButton:    "UNLOCK",
+    lockWrongCode:   "That's not it. Try again.",
+
     // start screen
     startKicker:      "",   // blank by default — the element hides itself when empty
     howToTitle:       "How this works",
@@ -618,6 +638,7 @@
     resolveLabels: resolveLabels,
     fillTokens: fillTokens,
     checkAnswer: checkAnswer,
+    codeMatches: codeMatches,
     formatTime: formatTime,
     countHints: countHints,
     countWrong: countWrong,
@@ -785,6 +806,28 @@
   var PHOTOS_KEY = STORAGE_KEY + "-photos";
   var photos = loadPhotos();     // { stopId: "data:image/jpeg;base64,..." }
 
+  /* ---- access code -----------------------------------------------------
+   * Optional whole-game gate (config.accessCode). Verified once, then
+   * remembered in localStorage for the rest of the browser's life on this
+   * device — never re-asked on a normal reload/resume. Only cleared (and
+   * re-asked) when the hunt is reset back to the very beginning, either via
+   * the HUD's ⟲ or the finish screen's "Reset the hunt" button. */
+
+  var ACCESS_KEY = STORAGE_KEY + "-unlocked";
+
+  function isUnlocked() {
+    try { return localStorage.getItem(ACCESS_KEY) === "1"; } catch (e) { return false; }
+  }
+  function unlock() {
+    try { localStorage.setItem(ACCESS_KEY, "1"); } catch (e) {}
+  }
+  function lock() {
+    try { localStorage.removeItem(ACCESS_KEY); } catch (e) {}
+  }
+  function needsAccessCode() {
+    return !!(C.accessCode && String(C.accessCode).trim()) && !isUnlocked();
+  }
+
   // Reserved key for the final-selfie screen's photo, in the same `photos`
   // map as every stop's. No real stop can ever have this id — content.js
   // ids come from user-typed slugs and this one starts with a double
@@ -947,7 +990,7 @@
   }
 
   function screens() {
-    return ["start", "travel", "puzzle", "solved", "failed", "selfie", "finish"];
+    return ["lock", "start", "travel", "puzzle", "solved", "failed", "selfie", "finish"];
   }
 
   function show(name) {
@@ -955,8 +998,8 @@
       var el = $("screen-" + s);
       if (el) el.hidden = (s !== name);
     });
-    // No stop progress is relevant on the selfie screen — it isn't a stop.
-    $("hud").hidden = (name === "start" || name === "selfie");
+    // No stop progress is relevant on the lock or selfie screens — neither is a stop.
+    $("hud").hidden = (name === "start" || name === "selfie" || name === "lock");
     window.scrollTo(0, 0);
   }
 
@@ -1715,6 +1758,19 @@
 
   function goStart() { state.view = "start"; paintStart(); show("start"); }
 
+  /** The access-code gate — see needsAccessCode() above. Doesn't touch
+   *  state.view at all: this sits entirely in front of the real game. */
+  function goLock() {
+    $("lockKicker").textContent = t("lockKicker");
+    $("lockTitle").textContent = t("lockTitle");
+    $("lockInput").placeholder = t("lockPlaceholder");
+    $("lockInput").value = "";
+    $("btnUnlock").textContent = t("unlockButton");
+    $("lockFeedback").textContent = "";
+    show("lock");
+    setTimeout(function () { $("lockInput").focus(); }, 50);
+  }
+
   function goTravel() {
     // On-site puzzles skip the travel screen entirely — nothing to walk to.
     if (!hasTravelClue(currentStop())) { goPuzzle(); return; }
@@ -2033,16 +2089,24 @@
 
   $("btnStart").addEventListener("click", beginFreshRun);
 
+  /** Wipe local progress and go back to the very beginning — shared by both
+   *  reset entry points. Re-locks behind the access code if one's set,
+   *  since "starting the hunt from the beginning" is the one moment that
+   *  should ask for it again. */
+  function resetToStart() {
+    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(PHOTOS_KEY); } catch (e) {}
+    state = freshState();
+    photos = {};
+    if (timerHandle) clearInterval(timerHandle);
+    if (C.accessCode && String(C.accessCode).trim()) { lock(); goLock(); } else { goStart(); }
+  }
+
   // The ⟲ in the HUD — the only way to abandon a run in progress.
   // Double-confirmed on purpose: an accidental tap here would be a disaster.
   $("btnHudReset").addEventListener("click", function () {
     if (!confirm("Abandon this run and start over from Stop 1?\n\nThe clock resets too.")) return;
     if (!confirm("Really? Everything goes. Last chance.")) return;
-    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(PHOTOS_KEY); } catch (e) {}
-    state = freshState();
-    photos = {};
-    if (timerHandle) clearInterval(timerHandle);
-    goStart();
+    resetToStart();
   });
 
   /* ---- photo lightbox ----------------------------------------------------- */
@@ -2180,11 +2244,7 @@
 
   $("btnReset").addEventListener("click", function () {
     if (!confirm("Wipe everything and start a fresh hunt?")) return;
-    try { localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(PHOTOS_KEY); } catch (e) {}
-    state = freshState();
-    photos = {};
-    if (timerHandle) clearInterval(timerHandle);
-    goStart();
+    resetToStart();
   });
 
   /* ---- boot --------------------------------------------------------------- */
@@ -2202,6 +2262,7 @@
 
   function boot() {
     paintStart();
+    if (needsAccessCode()) { goLock(); return; }
     if (state.startedAt != null) {
       // Mid-run or finished: drop them straight back where they were.
       restoreView();
@@ -2209,6 +2270,19 @@
       show("start");
     }
   }
+
+  $("lockForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (codeMatches($("lockInput").value, C.accessCode)) {
+      unlock();
+      if (state.startedAt != null) { restoreView(); } else { show("start"); }
+      return;
+    }
+    $("lockFeedback").textContent = t("lockWrongCode");
+    $("lockFeedback").className = "feedback bad";
+    $("lockInput").value = "";
+    $("lockInput").focus();
+  });
 
   boot();
 
